@@ -1,0 +1,96 @@
+#!/bin/bash
+#SBATCH --job-name="chava_analysis"
+#SBATCH --time=13:30:0
+#SBATCH --partition=shared
+#SBATCH --nodes=1
+#SBATCH --ntasks-per-node=9
+#SBATCH --mail-type=end
+#SBATCH --mail-user=cduque1@jhu.edu
+
+
+ml anaconda
+conda activate ~/.conda/envs/cdRNAseq/
+ml samtools
+
+for path in /home-1/cduque1@jhu.edu/work/Jaime/CHAVA/usftp21.novogene.com/raw_data/*; do
+        SAMPLEID="$(basename "${path}")"
+
+#initial fastqc to check
+        fastqc \
+        --threads 8 \
+        /home-1/cduque1@jhu.edu/work/Jaime/CHAVA/usftp21.novogene.com/raw_data/$SAMPLEID/*.fq.gz \
+        --outdir ~/work/Carolina/CHAVA/FASTqc
+
+#fastqscreen
+        fastq_screen \
+        --outdir ~/work/Carolina/CHAVA/FASTqscreen \
+        --threads 16 \
+        /home-1/cduque1@jhu.edu/work/Jaime/CHAVA/usftp21.novogene.com/raw_data/$SAMPLEID/*.fq.gz \
+
+#Trimmomatic
+        cd ~/work/Carolina/CHAVA/Trimmomatic
+        java -jar trimmomatic-0.38.jar \
+        PE \
+        -threads 4 \
+        -phred33 \
+        /home-1/cduque1@jhu.edu/work/Jaime/CHAVA/usftp21.novogene.com/raw_data/$SAMPLEID/*_1.fq.gz \
+        /home-1/cduque1@jhu.edu/work/Jaime/CHAVA/usftp21.novogene.com/raw_data/$SAMPLEID/*_2.fq.gz \
+        -baseout ${SAMPLEID}.fq.gz \
+        ILLUMINACLIP:/software/apps/trimmomatic/0.38/adapters/TruSeq3-PE.fa:2:30:10:6:true \
+        LEADING:3 \
+        TRAILING:3 \
+        SLIDINGWINDOW:4:17 \
+        MINLEN:45
+
+#fastqc on Trimmed
+        fastqc \
+        --threads 8 \
+        /home-1/cduque1@jhu.edu/work/Carolina/CHAVA/Trimmomatic/*.fq.gz \
+        --outdir ~/work/Carolina/CHAVA/FASTqcTrimmed
+
+#HiSat2 mapping. we used HiSat2 pre-indexed genome that was made from ENSEMBLEs grch38, release 84.
+        cd ~/work/Carolina/CHAVA/HiSat2
+        hisat2 \
+        --threads 12 \
+        -x /home-1/cduque1@jhu.edu/work/Carolina/Genomes/IndexHiSat2/grch38_snp_tran/genome_snp_tran \
+        -1 /home-1/cduque1@jhu.edu/work/Carolina/CHAVA/Trimmomatic/${SAMPLEID}_1P.fq.gz,/home-1/cduque1@jhu.edu/work/Carolina/CHAVA/Trimmomatic/${SAMPLEID}_1U.fq.gz \
+        -2 /home-1/cduque1@jhu.edu/work/Carolina/CHAVA/Trimmomatic/${SAMPLEID}_2P.fq.gz,/home-1/cduque1@jhu.edu/work/Carolina/CHAVA/Trimmomatic/${SAMPLEID}_2U.fq.gz \
+        -S ${SAMPLEID}.sam
+
+#sort sam file by name and convert to Bam
+        cd ~/work/Carolina/CHAVA/HiSat2
+        samtools sort \
+        -@ 8 \
+        -T /home-1/cduque1@jhu.edu/work/Carolina/CHAVA/HiSat2/tempHiSat2 \
+        -n \
+        -o ${SAMPLEID}.bam \
+        /home-1/cduque1@jhu.edu/work/Carolina/CHAVA/HiSat2/${SAMPLEID}.sam \
+
+#picard for duplicates imput must be coordinate sorted
+        cd ~/work/Carolina/CHAVA/picard
+        java -jar /home-1/cduque1@jhu.edu/.conda/envs/cdRNAseq/share/picard-2.20.4-0/picard.jar \
+        MarkDuplicates \
+        I=/home-1/cduque1@jhu.edu/work/Carolina/CHAVA/HiSat2/sortedSAM/${SAMPLEID}.bam \
+        O=${SAMPLEID}_marked.bam \
+        M=${SAMPLEID}_marked_dup.txt \
+        TAGGING_POLICY=All
+
+#qualimap for quality Check
+        qualimap rnaseq \
+        -outdir /home-1/cduque1@jhu.edu/work/Carolina/CHAVA/qualimap \
+        -bam /home-1/cduque1@jhu.edu/work/Carolina/CHAVA/picard/${SAMPLEID}_marked.bam \
+        -gtf /home-1/cduque1@jhu.edu/work/Carolina/Genomes/Homo_sapiens.GRCh38.84.gtf \
+        -s
+
+done
+
+#featureCounts
+cd ~/work/Carolina/CHAVA/featureCounts
+featureCounts \
+-T 8 \
+-a /home-1/cduque1@jhu.edu/work/Carolina/Genomes/Homo_sapiens.GRCh38.84.gtf \
+-o CHAVAcounts.txt \
+-p \
+-M \
+/home-1/cduque1@jhu.edu/work/Carolina/CHAVA/HiSat2/sortedSAM/*.bam \
+
