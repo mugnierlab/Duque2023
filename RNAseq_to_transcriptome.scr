@@ -1,0 +1,43 @@
+#SBATCH --job-name="Salmon"
+#SBATCH --time 4:10:0
+#SBATCH --partition=defq
+#SBATCH --nodes=1
+#SBATCH --ntasks-per-node=6
+#SBATCH --mail-type=end
+#SBATCH --mail-user=cduque1@jhu.edu
+
+# Generate decoy-aware transcriptome based on whole genome for SALMON
+grep "^>" <(gunzip -c /home/cduque1/scratch4-mmugnie1/carolina/Genomes/Human38/release109/Homo_sapiens.GRCh38.dna.primary_assembly.fa.gz) | cut -d " " -f 1 > GRCh38_109_decoys.txt
+sed -i.bak -e 's/>//g' GRCh38_109_decoys.txt
+
+cat /home/cduque1/scratch4-mmugnie1/carolina/Genomes/Human38/release109/Homo_sapiens.GRCh38.cdna.all.fa.gz \
+/home/cduque1/scratch4-mmugnie1/carolina/Genomes/Human38/release109/Homo_sapiens.GRCh38.ncrna.fa.gz \
+/home/cduque1/scratch4-mmugnie1/carolina/Genomes/Human38/release109/Homo_sapiens.GRCh38.dna.primary_assembly.fa.gz \
+> GRCm38_109_cDNA_ncDNA_genome.fa.gz
+
+ml anaconda
+conda activate ~/.conda/envs/cdRNAseq3.7
+
+salmon index -t GRCm38_109_cDNA_ncDNA_genome.fa.gz -d GRCh38_109_decoys.txt -p 12 -i salmon_index
+
+# quantify
+for path in /home/cduque1/scratch4-mmugnie1/carolina/CHAVA/fastq/*fq.gz; do
+        SAMPLEID="$(basename "${path}")"
+        if [[ "$(basename "${path}")" == *"_1."* ]]
+        then
+            	SAMPLEID=${SAMPLEID::-8}
+        else
+            	continue
+        fi
+
+        echo $SAMPLEID
+
+        salmon quant -i /home/cduque1/scratch4-mmugnie1/carolina/Genomes/SalmonIndex/salmon_index \
+        -l IU \
+        -1 /home/cduque1/scratch4-mmugnie1/carolina/CHAVA/fastq/${SAMPLEID}_1.fq.gz \
+        -2 /home/cduque1/scratch4-mmugnie1/carolina/CHAVA/fastq/${SAMPLEID}_2.fq.gz \
+        --gcBias \
+        -p 8 \
+        -o ${SAMPLEID}_transcript_quant
+
+done
