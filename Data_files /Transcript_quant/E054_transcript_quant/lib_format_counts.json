@@ -1,0 +1,22 @@
+{
+    "read_files": "[ /home/cduque1/scratch4-mmugnie1/carolina/CHAVA/fastq/E054_1.fq.gz, /home/cduque1/scratch4-mmugnie1/carolina/CHAVA/fastq/E054_2.fq.gz]",
+    "expected_format": "IU",
+    "compatible_fragment_ratio": 1.0,
+    "num_compatible_fragments": 20800079,
+    "num_assigned_fragments": 20800079,
+    "num_frags_with_concordant_consistent_mappings": 20503947,
+    "num_frags_with_inconsistent_or_orphan_mappings": 528406,
+    "strand_mapping_bias": 0.5018730783882732,
+    "MSF": 0,
+    "OSF": 0,
+    "ISF": 10290379,
+    "MSR": 0,
+    "OSR": 0,
+    "ISR": 10213568,
+    "SF": 262210,
+    "SR": 266196,
+    "MU": 0,
+    "OU": 0,
+    "IU": 0,
+    "U": 0
+}
