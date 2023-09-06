@@ -65,11 +65,10 @@ CHAVAinfo$Cat=as.factor(CHAVAinfo$Cat)
 CHAVAinfo$Origin=as.factor(CHAVAinfo$Origin)
 CHAVAinfo$Batch=as.factor(CHAVAinfo$Batch)
 CHAVAinfo$RIN=as.factor(round(CHAVAinfo$RIN))
-#CHAVAinfo$AgeRange=cut(CHAVAinfo$Age,breaks=4) #break up age into factors  "(26.1,38.4]" "(38.4,50.7]" "(50.7,62.9]" "(62.9,75.2]"
-CHAVAinfo$AgeRange=cut(CHAVAinfo$Age,breaks=3) #(26.1,42.5], (42.5,58.8], (58.8,75.2]
-CHAVAinfo$AgeCategory=CHAVAinfo$AgeRange
+CHAVAinfo$AgeRange=cut(CHAVAinfo$Age,breaks=3)
 CHAVAinfo$AgeCategory=CHAVAinfo$AgeRange
 levels(CHAVAinfo$AgeCategory)=c("Young", "Mid","Old")
+phenoCols=list(Infection=c(Neg="#4349e8",Pos="#f5474a"),Origin=c(CentralAm="#DE8333",Bolivia="#1c9470"),Cat=c(A="#0fbab7",B="#6e016b"))
 
 #here i subset for patients that have values for the ECG, and I remove B140 since incorrect sex and idk what else might be wrong
 CHAVA_ECG=CHAVAinfo[CHAVAinfo$NovogeneCode %in% c(ECGs),]
@@ -96,4 +95,232 @@ rRNAs=biomaRt::getBM(values="rRNA",
                attributes=c("ensembl_gene_id", "external_gene_name", "gene_biotype"), 
                mart = ensembl)
 Counts_ECG=Counts_ECG[!(row.names(Counts_ECG) %in% rRNAs$ensembl_gene_id),]
+```
+# Comparing Infected and Uninfected Controls
+
+Set up deseq object and design matrix. fit model and evaluate DEGs. Here i have my cut off as FDR < 0.1 and any Log fold change.
+```{r}
+ddsAll=DESeqDataSetFromMatrix(countData = Counts_ECG, colData =CHAVA_ECG, design= ~PCA  + Infection)
+keepddsAll= rowSums(counts(ddsAll)>= 10) >=3 #keeps genes with at least 3 samples with 10 counts
+ddsAll <- ddsAll[keepddsAll,]
+
+ddsAll=DESeq(ddsAll) #normalizes, estimates dispersion and fits glm
+
+resultIfxnAll=results(ddsAll,alpha = 0.1, contrast=c("Infection", "Pos", "Neg")) #alpha sets FDR (default is 0.1), can also set lfcthreshold
+summary(resultIfxnAll)
+```
+
+annotate results
+```{r}
+
+annotIfxn <- getBM(attributes=c('ensembl_gene_id', 'external_gene_name'), 
+               filters = "ensembl_gene_id", 
+               values = rownames(resultIfxnAll), 
+               mart = ensembl)
+
+annotIfxn<- as.data.frame(resultIfxnAll) %>% 
+  rownames_to_column("ensembl_gene_id") %>% 
+  left_join(annotIfxn, "ensembl_gene_id") %>% 
+  rename(log2FC=log2FoldChange, FDR=padj)
+
+SigAnnot_Ifxn = subset(annotIfxn, FDR < 0.1)
+SigAnnot_Ifxn[order(SigAnnot_Ifxn$log2FC), ]
+
+#write.csv(SigAnnot_Ifxn,"~/Library/CloudStorage/OneDrive-JohnsHopkins/Dr.GIlman/CHAVA_RNAseq/Deliverables/Manuscript/tables/Female_PosvNeg.csv")
+
+```
+
+```{r}
+vstIfxn=vst(ddsAll, blind=FALSE)
+
+topgenes_Ifxn=arrange(annotIfxn, FDR)
+topgenes_Ifxn=na.omit(topgenes_Ifxn)
+topgenes_Ifxn[topgenes_Ifxn==""]="No GeneSymb"
+sigcount=sum(topgenes_Ifxn$FDR < 0.1)
+if (sigcount <=2){sigcount=2}
+topgenesnames_Ifxn <- topgenes_Ifxn$external_gene_name[1:sigcount]
+topgenes_Ifxn <- topgenes_Ifxn$ensembl_gene_id[1:sigcount]
+
+sampleinfo_Ifxn= arrange(data.frame(colData(vstIfxn)[,c("ECG","Infection")]), Infection)
+sampleinfo_Ifxn=subset(sampleinfo_Ifxn, select= -ECG)
+mat_Ifxn= assay(vstIfxn)[topgenes_Ifxn,] - rowMeans(assay(vstIfxn)[topgenes_Ifxn,])
+
+pdf("~/Library/CloudStorage/OneDrive-JohnsHopkins/Dr.GIlman/CHAVA_RNAseq/Deliverables/Manuscript/Figures/F_posneg_heatmap_0.1.pdf")
+pheatmap(mat_Ifxn, annotation_col = sampleinfo_Ifxn, show_colnames = TRUE, labels_row = topgenesnames_Ifxn, annotation_colors= phenoCols,color = colorRampPalette(rev(brewer.pal(n = 7, name =
+  "RdBu")))(100))
+dev.off()
+```
+
+
+### volcano plot
+```{r}
+y_Ifxn=-log10(min(SigAnnot_Ifxn$FDR))+1
+xmin_Ifxn=min(na.omit(annotIfxn)$log2FC)-0.1
+xmax_Ifxn=max(na.omit(annotIfxn)$log2FC)+0.1
+
+keyIfxn <- ifelse(
+    annotIfxn$log2FC < -0.58 & annotIfxn$FDR<0.1, 'royalblue',
+      ifelse(annotIfxn$log2FC > 0.58 & annotIfxn$FDR<0.1, 'red',
+            ifelse((annotIfxn$log2FC< -0.58 | annotIfxn$log2FC> 0.58 )& annotIfxn$FDR>0.1,'black',
+                   ifelse(annotIfxn$log2FC > -0.58 & annotIfxn$log2FC < 0.58 & annotIfxn$FDR<0.1,'black',
+        'grey'))))
+
+ 
+ 
+keyIfxn[is.na(keyIfxn)] <- 'grey'
+names(keyIfxn)[keyIfxn == 'red'] <- 'upregulated'
+names(keyIfxn)[keyIfxn == 'grey'] <- 'nonsignificant'
+names(keyIfxn)[keyIfxn == 'black'] <- 'mid'
+names(keyIfxn)[keyIfxn == 'royalblue'] <- 'downregulated'
+
+EnhancedVolcano(annotIfxn,
+                lab = annotIfxn$external_gene_name,
+                x = 'log2FC',
+                y = 'FDR',
+                colCustom = keyIfxn,
+                ylab = bquote(~-Log[10] ~ "FDR"),
+                ylim = c(0, y_Ifxn),
+                xlim = c(xmin_Ifxn,xmax_Ifxn),
+                title = 'Infection vs Control',
+                subtitle = NULL,
+                legendPosition = "top",
+                boxedLabels = TRUE,
+                drawConnectors = TRUE,
+                legendLabSize = 10,
+                legendIconSize = 3,
+                axisLabSize = 10,
+                titleLabSize = 15,
+                shadeAlpha = 0.5,
+                colAlpha = 0.7,
+                pCutoff = 0.1,
+                FCcutoff = 0.58,
+                pointSize = 1.5,
+                max.overlaps = 25,
+                labSize = 5.0)
+
+ggsave("~/Library/CloudStorage/OneDrive-JohnsHopkins/Dr.GIlman/CHAVA_RNAseq/Deliverables/Manuscript/Figures/F_posneg_volcano.pdf", width=7, height=5.5)
+```
+
+*Gene Set Enrichment Analysis* 
+&nbsp;
+All genes can be used in GSEA; GSEA aggregates the per gene statistics across genes within a gene set, therefore making it possible to detect situations where all genes in a predefined set change in a small but coordinated way. This is important since it is likely that many relevant phenotypic differences are manifested by small but consistent changes in a set of genes. the goal of GSEA is to determine whether the members of S are randomly distributed throughout the ranked gene list (L) or primarily found at the top or bottom. When the entire gene sets are evaluated, the estimated significance level is adjusted to account for multiple hypothesis testing and also q-values are calculated for FDR control.
+
+```{r}
+Ifxn_GO <- getBM(attributes=c('go_id','ensembl_gene_id'), 
+               filters = "ensembl_gene_id", 
+               values = rownames(resultIfxnAll), 
+               mart = ensembl)
+Ifxn_GO = subset(Ifxn_GO, go_id!="")
+Ifxn_GO = Ifxn_GO[,c(2,1)]
+
+
+Ifxn_geneList=annotIfxn$log2FC
+names(Ifxn_geneList) = as.character(annotIfxn$ensembl_gene_id)
+Ifxn_geneList = na.omit(Ifxn_geneList)
+Ifxn_geneList = sort(Ifxn_geneList, decreasing = TRUE)
+
+
+Ifxn_GSEA_BP <- gseGO(geneList= Ifxn_geneList,
+              OrgDb        = org.Hs.eg.db,
+              ont          = "BP",
+              eps = 1e-30,
+              keyType       = 'ENSEMBL',
+              minGSSize    = 10,
+              maxGSSize    = 2000,
+              pvalueCutoff = 0.05,
+              pAdjustMethod="BH",
+              verbose      = TRUE)
+
+dotplot(Ifxn_GSEA_BP, showCategory=20, label_format=45, font=10, orderBy="qvalue",decreasing=FALSE)
+#ggsave("~/Library/CloudStorage/OneDrive-JohnsHopkins/Dr.GIlman/CHAVA_RNAseq/Deliverables/Manuscript/Figures/F_posneg_gsea_BP_dotplot.pdf", heigh=8)
+
+
+Ifxn_GSEA_BP <- pairwise_termsim(Ifxn_GSEA_BP)
+Ifxn_GSEA_BP_simple <- simplify(Ifxn_GSEA_BP, cutoff=0.7, by="p.adjust", select_fun=min)
+dotplot(Ifxn_GSEA_BP_simple, showCategory=20, label_format=45, font=10, orderBy="qvalue",decreasing=FALSE)+ scale_colour_gradient(low = "#39c49b", high = "#41296b")
+
+edox2_Ifxn_GSEA_BP <- pairwise_termsim(Ifxn_GSEA_BP)
+treeplot(edox2_Ifxn_GSEA_BP,  showCategories=30, nCluster=7, label_format=10)
+
+Ifxn_GSEA_BP_Annot <- setReadable(Ifxn_GSEA_BP, 'org.Hs.eg.db', 'ENSEMBL')
+write.csv(Ifxn_GSEA_BP_Annot@result, file="~/Library/CloudStorage/OneDrive-JohnsHopkins/Dr.GIlman/CHAVA_RNAseq/Deliverables/Manuscript/tables/F_posneg_GSEA_BP.csv")
+
+cnetplot(Ifxn_GSEA_BP_Annot, foldChange=Ifxn_DEGeneList, cex_category=0.5,cex_label_gene=0.5,cex_label_category=0.5, node_label = "all", showCategory = 7)
+ggsave("~/Library/CloudStorage/OneDrive-JohnsHopkins/Dr.GIlman/CHAVA_RNAseq/Deliverables/Manuscript/Figures/F_posneg_gsea_cnet.pdf")
+
+Ifxn_GSEA_MF <- gseGO(geneList     = Ifxn_geneList,
+              OrgDb        = org.Hs.eg.db,
+              ont          = "MF",
+              keyType       = 'ENSEMBL',
+              minGSSize    = 10,
+              maxGSSize    = 5000,
+              pvalueCutoff = 0.05,
+              verbose      = TRUE)
+dotplot(Ifxn_GSEA_MF, showCategory=30, label_format=50, font=10, orderBy="qvalue",decreasing=FALSE)
+
+edox2_Ifxn_GSEA_MF <- pairwise_termsim(Ifxn_GSEA_MF)
+treeplot(edox2_Ifxn_GSEA_MF, showCategories=40, nCluster=3)
+
+Ifxn_GSEA_MF_Annot <- setReadable(Ifxn_GSEA_MF, 'org.Hs.eg.db', 'ENSEMBL')
+write.csv(Ifxn_GSEA_MF_Annot@result, file="~/Library/CloudStorage/OneDrive-JohnsHopkins/Dr.GIlman/CHAVA_RNAseq/Deliverables/Manuscript/tables/F_posneg_GSEA_MF.csv")
+```
+
+
+# Trust4 visualization using immunarch
+
+```{r}
+library(immunarch)
+```
+
+```{r}
+immdata <- repLoad("Trust4/results")
+```
+
+```{r}
+exp_vol <- repExplore(immdata$data, .method = "volume")
+
+exp_vol_meta=merge(exp_vol,immdata$meta, by="Sample")
+exp_vol_meta$group=paste(exp_vol_meta$Infection,exp_vol_meta$Sex)
+
+kruskal.test(Volume ~ group, data=exp_vol_meta)
+
+test_vol_Ifxn_abs=data.frame()
+
+  temp=wilcox.test(subset(exp_vol_meta,Sex=="F" & Infection=="Neg")$Volume , subset(exp_vol_meta,Sex=="F" & Infection=="Pos")$Volume ,  alternative="two.sided", exact=FALSE)
+  test_vol_Ifxn_abs=rbind(test_vol_Ifxn_abs,c("FPosvFNeg",temp$p.value))
+
+colnames(test_vol_Ifxn_abs)=c("Comparison", "Wilcox_P")
+test_vol_Ifxn_abs$FDR=p.adjust(test_vol_Ifxn_abs$Wilcox_P, method = "BH", n = length(test_vol_Ifxn_abs$Wilcox_P))
+test_vol_Ifxn_abs[order(test_vol_Ifxn_abs$Wilcox_P),]
+
+
+ggplot(subset(exp_vol_meta,Sex=="F"), aes(fill=Infection,x=group, y=Volume)) +
+  geom_violin()+
+  theme_classic() +
+  scale_fill_manual(breaks = c("Neg","Pos"),
+                     values=c( "#7788e1", "#f38796")) + geom_jitter(width=0.08, height=0.1, size=0.6)
+ggsave("~/Library/CloudStorage/OneDrive-JohnsHopkins/Dr.GIlman/CHAVA_RNAseq/Deliverables/Manuscript/Figures/F_PosNeg_clonotypes.pdf", width=3, height=3)
+```
+```{r}
+imm_gu <- geneUsage(immdata$data, .gene="hs.igkv", .norm = F, .quant="count")
+
+DEGs=SigAnnot_Ifxn[grep("IG", SigAnnot_Ifxn$external_gene_name), ]
+DEGs=DEGs$external_gene_name
+imm_gu_DEGs=imm_gu[imm_gu$Names %in% c(DEGs),]
+
+imm_gu_DEGs_long= imm_gu_DEGs%>% 
+  pivot_longer(!Names,names_to="Sample",values_to = "WeightedCounts")
+
+imm_gu_DEGs_long=merge(imm_gu_DEGs_long,immdata$meta, by="Sample")
+
+F_imm_gu_DEGs_long=subset(imm_gu_DEGs_long,Sex=="F")
+p_imm_gu_DEGs=ggplot(F_imm_gu_DEGs_long, aes(fill=Infection,x=Names, y=WeightedCounts)) +
+  geom_boxplot(position="dodge",width=0.7, outlier.size = 1)+
+  theme_classic() +
+  scale_fill_manual(breaks = c("Neg","Pos"),
+                     values=c( "#7788e1", "#f38796")) +
+  theme(axis.text.x = element_text(angle = 45, hjust=1))
+
+p_imm_gu_DEGs
+ggsave("imm_gu_DEGs_F.pdf",width=5,height=3)
 ```
