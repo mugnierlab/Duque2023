@@ -1,0 +1,22 @@
+{
+    "read_files": "[ /home/cduque1/scratch4-mmugnie1/carolina/CHAVA/fastq/B100_1.fq.gz, /home/cduque1/scratch4-mmugnie1/carolina/CHAVA/fastq/B100_2.fq.gz]",
+    "expected_format": "IU",
+    "compatible_fragment_ratio": 1.0,
+    "num_compatible_fragments": 20226343,
+    "num_assigned_fragments": 20226343,
+    "num_frags_with_concordant_consistent_mappings": 19931139,
+    "num_frags_with_inconsistent_or_orphan_mappings": 561593,
+    "strand_mapping_bias": 0.5028975012416501,
+    "MSF": 0,
+    "OSF": 0,
+    "ISF": 10023320,
+    "MSR": 0,
+    "OSR": 0,
+    "ISR": 9907819,
+    "SF": 276385,
+    "SR": 285208,
+    "MU": 0,
+    "OU": 0,
+    "IU": 0,
+    "U": 0
+}
