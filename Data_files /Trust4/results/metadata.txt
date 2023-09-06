@@ -1,0 +1,48 @@
+Sample	CHAVACODE	Infection	Country	Origin	Age	Sex	Cat1	Cat2	Cat	OldECG	ECG	RIN	Batch	checked_2023	Diagnosis	PCA	
+B052_report	160052	Pos	3	Bol	37.7534247	F	A	A	A	NA	0	7.4	210305	yes	normal	left	B052_report_report
+B083_report	160083	Neg	3	Bol	37.5315068	F	A	A	A	0	0	8	210305	yes	normal	left	B083_report_report
+B087_report	160087	Neg	3	Bol	36.2054795	M	A	A	A	0	0	8.3	210305	yes	normal	left	B087_report_report
+B097_report	160097	Neg	3	Bol	38.0520548	M	B	B	B	2	1	6.7	210310	yes	bradycardia	left	B097_report_report
+B100_report	160100	Neg	3	Bol	65.7068493	F	A	A	A	0	0	7.6	pooled	yes	normal	left	B100_report_report
+B117_report	160117	Neg	3	Bol	48.5534247	F	A	A	A2	2	2	8.8	210309	yes	nonSPECIFIC T WAVE ABNL ANTERIOR LEADS	left	B117_report_report
+B118_report	160118	Neg	3	Bol	60.7589041	F	A	A2	B	2	1	8.2	pooled	yes	LPFB	left	B118_report_report
+B140_report	160140	Neg	3	Bol	67.03287671	M	B	B	B	0	1	8.3	pooled	yes	bradycardia	left	B140_report_report
+B141_report	170141	Neg	3	Bol	73.12877	F	NA	NA	NA	NA	NA	8.1	pooled	yes	NA	left	B141_report_report
+B143_report	170143	Neg	3	Bol	75.1863	F	NA	NA	NA	NA	NA	7	pooled	yes	NA	left	B143_report_report
+B146_report	160146	Neg	3	Bol	49.2465753	M	B	B	B	1	1	7.4	210305	yes	"pvc, LAFB, first degree AV, LVH, T wave inversion, IVCD"	right	B146_report_report
+B147_report	160147	Neg	3	Bol	51.8273973	M	A	A	A2	2	2	8	pooled	yes	Flat T waves	right	B147_report_report
+B160_report	160160	Neg	3	Bol	57.50958904	F	A	A	A	0	0	8.1	210316	yes	normal	right	B160_report_report
+B178_report	160178	Pos	3	Bol	62.56164	F	NA	NA	NA	NA	NA	7.6	pooled	yes	NA	right	B178_report_report
+B180_report	160180	Pos	3	Bol	41.0027397	M	A	A	B	2	2	7.9	pooled	yes	IVCD	right	B180_report_report
+B182_report	160182	Neg	3	Bol	57.460274	F	A	A	A	0	0	7.5	pooled	yes	normal	right	B182_report_report
+B189_report	160189	Pos	3	Bol	46.1835616	F	B	B	B	1	1	8.1	210310	yes	"bradycardia, RBBB, LPFB"	right	B189_report_report
+B200_report	160200	Neg	3	Bol	41.3205479	F	A	A	A	0	0	8.3	210121	yes	normal	right	B200_report_report
+B201_report	160201	Neg	3	Bol	33.32877	F	NA	NA	NA	NA	NA	8.6	210121	yes	NA	right	B201_report_report
+B207_report	160207	Pos	3	Bol	56.5369863	M	A	A	A	2	2	7.9	210305	???	??	right	B207_report_report
+B209_report	160209	Pos	3	Bol	71.1643836	F	A	A	A	0	0	7.1	210309	yes	normal	right	B209_report_report
+B213_report	160213	Neg	3	Bol	50.5561644	F	A	A2	B	1	1	8.7	210310	yes	"LPFB, IVCD"	right	B213_report_report
+B244_report	160244	Neg	3	Bol	38.6	M	NA	NA	NA	NA	NA	7.8	pooled	yes	NA	left	B244_report_report
+B284_report	160284	Neg	3	Bol	62.9589041	M	B	B	B	1	1	7.6	pooled	????	????	left	B284_report_report
+B339_report	170339	Neg	3	Bol	60.6931507	F	B	B	B	1	1	8	210308	yes	"RBBB, LAFB"	left	B339_report_report
+B340_report	160340	Pos	3	Bol	47.9726027	M	B	B	B	1	1	8.1	pooled	yes	"RBBB, LAFB"	left	B340_report_report
+B383_report	160383	Pos	3	Bol	41.9315068	F	A	A	A	0	0	7.4	210309	yes	normal	left	B383_report_report
+B412_report	160412	Neg	3	Bol	60.39178082	F	A	A	A	0	0	8.4	210316	yes	normal	left	B412_report_report
+B429_report	160429	Neg	3	Bol	40.35890411	M	A	A	A	0	0	8	210316	yes	normal	left	B429_report_report
+B430_report	160430	Neg	3	Bol	44.64109589	M	A	A	A	0	0	8.8	210316	yes	normal	left	B430_report_report
+B476_report	170476	Pos	3	Bol	53.0219178	F	A	A2	A2	1	1	8	pooled	yes	"low voltage, nonspeecific T wave abnormalities, inditerminate axis, LVH"	left	B476_report_report
+B586_report	170586	Pos	3	Bol	59.20548	F	NA	NA	NA	NA	NA	6.7	pooled	yes	NA	left	B586_report_report
+B621_report	170621	Pos	3	Bol	36.6109589	M	B	B	B	0	1	7.5	210305	yes	bradycardia	left	B621_report_report
+E053_report	170053	Pos	9	CentAm	46.3123288	F	B	B	B	1	1	7.7	210308	yes	"first degree AV, LVH, IVCD"	left	E053_report_report
+E054_report	170054	Neg	9	CentAm	48.0328767	F	B	B	B	0	1	7.6	210308	yes	"low voltage, first degree AV"	left	E054_report_report
+E375_report	160375	Neg	9	CentAm	43.2219178	F	A	A	A	0	0	7.6	210309	yes	normal	left	E375_report_report
+G016_report	170016	Neg	10	CentAm	28.66575	M	NA	NA	NA	NA	NA	7.5	210308	yes	NA	left	G016_report_report
+G026_report	170026	Neg	10	CentAm	26.1287671	M	A	A2	B	0	1	8.1	210308	yes	LPFB	left	G026_report_report
+G028_report	160028	Neg	10	CentAm	34.5068493	F	A	A	A	NA	0	7	210305	yes	normal	left	G028_report_report
+G157_report	170157	Pos	10	CentAm	44	F	NA	NA	NA	NA	NA	7.1	201216	yes	NA	left	G157_report_report
+G225_report	170225	Pos	10	CentAm	37	F	NA	NA	NA	NA	NA	7	pooled	yes	NA	left	G225_report_report
+G282_report	170282	Neg	11	CentAm	55.3561644	F	B	B	B	1	1	9	pooled	yes	LAFB	left	G282_report_report
+G283_report	170283	Neg	10	CentAm	30.46027	F	NA	NA	NA	NA	NA	7.8	pooled	yes	NA	left	G283_report_report
+G756_report	170756	Neg	10	CentAm	45.7917808	F	A	A	A	0	0	8.2	210310	yes	normal	left	G756_report_report
+H093_report	160093	Neg	10	CentAm	49.16712329	M	A	A	A	0	0	8.2	pooled	yes	normal	left	H093_report_report
+H524_report	170524	Pos	11	CentAm	48.0794521	M	B	B	B	1	1	7.8	210308	yes	"RBBB, LAFB"	left	H524_report_report
+H754_report	170754	Neg	11	CentAm	35.0328767	M	B	B	B	0	1	7.9	210309	yes	"bradycardia, maybe IV blcok"	left	H754_report_report
