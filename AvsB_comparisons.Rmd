@@ -112,24 +112,12 @@ pcagenes <-  order(rv, decreasing=TRUE)[seq_len(min(1000, length(rv)))]
 pca <- prcomp(t(assay(vst_Var)[pcagenes,]))
 percentVar <- pca$sdev^2 / sum( pca$sdev^2 )
 
-autoplot(pca, data=CHAVA_ECG, colour="Infection", size=4) + 
-  scale_color_manual(values=c("darkgreen","red")) + theme_bw()
 autoplot(pca, data=CHAVA_ECG, colour="Sex", size=4) + theme_classic()
-ggsave("~/Library/CloudStorage/OneDrive-JohnsHopkins/Dr.GIlman/CHAVA_RNAseq/Deliverables/Manuscript/Figures/SexPCA.pdf")
+ggsave("~SexPCA.pdf")
 
 
 autoplot(pca, data=CHAVA_ECG, colour="PCA", size=4) + theme_classic() + scale_color_manual(values=c("purple","darkgrey"))
-ggsave("~/Library/CloudStorage/OneDrive-JohnsHopkins/Dr.GIlman/CHAVA_RNAseq/Deliverables/Manuscript/Figures/BatchEffect.pdf")
-
-autoplot(pca, data=CHAVA_ECG, colour="ECG", size=4) + 
-  scale_color_manual(values=c("#498655","#911434","#299AAF"))+ theme_bw()
-autoplot(pca, data=CHAVA_ECG, colour="AgeCategory", size=4) + 
-  scale_color_manual(values=c("#9EBCDA", "#8C6BB1", "#810F7C", "#4D004B"))+ theme_bw()
-
-autoplot(pca, data=CHAVA_ECG, colour="Batch", size=4) +
-  scale_color_brewer(palette = "Set2")+ theme_bw()
-autoplot(pca, data=CHAVA_ECG, colour="RIN", size=4) +
-  scale_color_brewer(palette = "Set2")+ theme_bw()
+ggsave("~BatchEffect.pdf")
 
 ggpairs(pca$x, columns = 1:5, aes(colour=CHAVA_ECG$Sex), upper =list(continuous= "blank"), diag = list(continuous = wrap("densityDiag",alpha=0.5)),lower = list(continuous = wrap("points", alpha = 0.9, size=0.6)))
 
@@ -137,24 +125,65 @@ ggpairs(pca$x, columns = 1:5, aes(colour=CHAVA_ECG$Sex), upper =list(continuous=
 ggpairs(pca$x, columns = 1:5, aes(colour=CHAVA_ECG$Infection), upper =list(continuous= "blank"),diag = list(continuous = wrap("densityDiag",alpha=0.5)),legend=c(2,1),lower = list(continuous = wrap("points", alpha = 0.9, size=0.7))) + 
   scale_color_manual(values=c("#4349e8","#f5474a"))+ 
   scale_fill_manual(values=c("#4349e8","#f5474a"))+ theme_bw() + labs(colour="Infection Status")
-ggsave("~/Library/CloudStorage/OneDrive-JohnsHopkins/Dr.GIlman/CHAVA_RNAseq/Deliverables/Manuscript/Figures/Infection.pdf")
+ggsave("~Infection.pdf")
 
 ggpairs(pca$x, columns = 1:5, aes(colour=CHAVA_ECG$Origin), upper =list(continuous= "blank"),diag = list(continuous = wrap("densityDiag",alpha=0.5)),legend=c(2,1),lower = list(continuous = wrap("points", alpha = 0.9, size=0.7))) + 
   scale_color_manual(values=c("#DE8333","#1c9470")) +
   scale_fill_manual(values=c("#DE8333","#1c9470")) +theme_bw() + labs(colour="Origin")
-ggsave("~/Library/CloudStorage/OneDrive-JohnsHopkins/Dr.GIlman/CHAVA_RNAseq/Deliverables/Manuscript/Figures/Origin.pdf")
+ggsave("~Origin.pdf")
 
 ggpairs(pca$x, columns = 1:5, aes(colour=CHAVA_ECG$Cat), upper =list(continuous= "blank"),diag = list(continuous = wrap("densityDiag",alpha=0.5)),legend=c(2,1),lower = list(continuous = wrap("points", alpha = 0.9, size=0.7))) + 
   scale_color_manual(values=c("#0fbab7","#1b804f","#6e016b")) +
   scale_fill_manual(values=c("#0fbab7","#1b804f","#6e016b")) +theme_bw() +  labs(colour="Heart Failure")
-ggsave("~/Library/CloudStorage/OneDrive-JohnsHopkins/Dr.GIlman/CHAVA_RNAseq/Deliverables/Manuscript/Figures/AHA_Category.pdf")
+ggsave("~AHA_Category.pdf")
 
 ggpairs(pca$x, columns = 1:5, aes(colour=CHAVA_ECG$AgeCategory), upper =list(continuous = "blank"),diag = list(continuous = wrap("densityDiag",alpha=0.5)),legend=c(2,1),lower = list(continuous = wrap("points", alpha = 0.9, size=0.7))) + theme_bw() + labs(colour="AgeCategory")
-ggsave("~/Library/CloudStorage/OneDrive-JohnsHopkins/Dr.GIlman/CHAVA_RNAseq/Deliverables/Manuscript/Figures/AgeCategory.pdf")
-
+ggsave("~AgeCategory.pdf")
 
 
 phenoCols=list(Infection=c(Neg="#4349e8",Pos="#f5474a"),Origin=c(CentralAm="#DE8333",Bolivia="#1c9470"),Cat=c(A="#0fbab7",B="#6e016b"))
 
+```
+
+# A vs B by infection status (excluding A2)
+
+## Postive
+```{r}
+CHAVA_ECG_AB_Pos=subset(CHAVA_ECG, Cat!="A2"&Infection=="Pos")
+CHAVA_ECG_AB_Pos=droplevels(CHAVA_ECG_AB_Pos)
+Counts_ECG_AB_Pos=subset(Counts_ECG, select=CHAVA_ECG_AB_Pos$NovogeneCode)
+```
+
+### DGE
+```{r}
+
+ddsAB_Pos=DESeqDataSetFromMatrix(countData = Counts_ECG_AB_Pos, colData =CHAVA_ECG_AB_Pos, design= ~PCA + Sex +  Cat)
+keepddsAB_Pos= rowSums(counts(ddsAB_Pos)>= 10) >=3 #keeps genes with at least 3 samples with 10 counts
+ddsAB_Pos <- ddsAB_Pos[keepddsAB_Pos,]
+ddsAB_Pos=DESeq(ddsAB_Pos) #normalizes, estimates dispersion and fits glm
+
+result_AB_Pos=results(ddsAB_Pos,alpha = 0.1,contrast=c("Cat", "B", "A")) 
+summary(result_AB_Pos)
+Sig_AB_Pos=subset(result_AB_Pos, padj < 0.1)
+```
+
+annotate results
+```{r}
+
+annot_AB_Pos <- getBM(attributes=c('ensembl_gene_id', 'external_gene_name'), 
+               filters = "ensembl_gene_id", 
+               values = rownames(result_AB_Pos), 
+               mart = ensembl)
+
+annot_AB_Pos<- as.data.frame(result_AB_Pos) %>% 
+  rownames_to_column("ensembl_gene_id") %>% 
+  left_join(annot_AB_Pos, "ensembl_gene_id") %>% 
+  rename(log2FC=log2FoldChange, FDR=padj)
+
+
+SigAnnot_AB_Pos = subset(annot_AB_Pos, FDR < 0.1)
+SigAnnot_AB_Pos[order(SigAnnot_AB_Pos$log2FC), ]
+
+#write.csv(SigAnnot_AB_Pos,"All_AB_Posv.csv")
 ```
 
