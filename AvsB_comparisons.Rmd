@@ -89,3 +89,72 @@ rRNAs=biomaRt::getBM(values="rRNA",
                mart = ensembl)
 Counts_ECG=Counts_ECG[!(row.names(Counts_ECG) %in% rRNAs$ensembl_gene_id),]
 ```
+
+## PCA
+
+set up a dds object with all possible variable to explore and filter out low-count genes
+```{r}
+dds_Var=DESeqDataSetFromMatrix(countData = Counts_ECG, colData =CHAVA_ECG, design= ~Sex +PCA + Origin + Cat+ AgeCategory + RIN +  Infection)
+
+keepddsVar= rowSums(counts(dds_Var)>= 10) >=3 #keeps genes with at least 3 samples with 10 counts
+dds_Var <- dds_Var[keepddsVar,]
+```
+
+vst transform to meet assumptions for PCA analysis. 
+```{r}
+vst_Var <- vst(dds_Var, blind=FALSE)
+testrld_Var=rbind(as.data.frame(assay(vst_Var)[, 1:2]))
+#ggplot(testrld_Var, aes(x=B052,y=B083))+ geom_hex(bins = 80) + coord_fixed()
+```
+```{r, message = FALSE}
+rv <- rowVars(assay(vst_Var))
+pcagenes <-  order(rv, decreasing=TRUE)[seq_len(min(1000, length(rv)))]
+pca <- prcomp(t(assay(vst_Var)[pcagenes,]))
+percentVar <- pca$sdev^2 / sum( pca$sdev^2 )
+
+autoplot(pca, data=CHAVA_ECG, colour="Infection", size=4) + 
+  scale_color_manual(values=c("darkgreen","red")) + theme_bw()
+autoplot(pca, data=CHAVA_ECG, colour="Sex", size=4) + theme_classic()
+ggsave("~/Library/CloudStorage/OneDrive-JohnsHopkins/Dr.GIlman/CHAVA_RNAseq/Deliverables/Manuscript/Figures/SexPCA.pdf")
+
+
+autoplot(pca, data=CHAVA_ECG, colour="PCA", size=4) + theme_classic() + scale_color_manual(values=c("purple","darkgrey"))
+ggsave("~/Library/CloudStorage/OneDrive-JohnsHopkins/Dr.GIlman/CHAVA_RNAseq/Deliverables/Manuscript/Figures/BatchEffect.pdf")
+
+autoplot(pca, data=CHAVA_ECG, colour="ECG", size=4) + 
+  scale_color_manual(values=c("#498655","#911434","#299AAF"))+ theme_bw()
+autoplot(pca, data=CHAVA_ECG, colour="AgeCategory", size=4) + 
+  scale_color_manual(values=c("#9EBCDA", "#8C6BB1", "#810F7C", "#4D004B"))+ theme_bw()
+
+autoplot(pca, data=CHAVA_ECG, colour="Batch", size=4) +
+  scale_color_brewer(palette = "Set2")+ theme_bw()
+autoplot(pca, data=CHAVA_ECG, colour="RIN", size=4) +
+  scale_color_brewer(palette = "Set2")+ theme_bw()
+
+ggpairs(pca$x, columns = 1:5, aes(colour=CHAVA_ECG$Sex), upper =list(continuous= "blank"), diag = list(continuous = wrap("densityDiag",alpha=0.5)),lower = list(continuous = wrap("points", alpha = 0.9, size=0.6)))
+
+
+ggpairs(pca$x, columns = 1:5, aes(colour=CHAVA_ECG$Infection), upper =list(continuous= "blank"),diag = list(continuous = wrap("densityDiag",alpha=0.5)),legend=c(2,1),lower = list(continuous = wrap("points", alpha = 0.9, size=0.7))) + 
+  scale_color_manual(values=c("#4349e8","#f5474a"))+ 
+  scale_fill_manual(values=c("#4349e8","#f5474a"))+ theme_bw() + labs(colour="Infection Status")
+ggsave("~/Library/CloudStorage/OneDrive-JohnsHopkins/Dr.GIlman/CHAVA_RNAseq/Deliverables/Manuscript/Figures/Infection.pdf")
+
+ggpairs(pca$x, columns = 1:5, aes(colour=CHAVA_ECG$Origin), upper =list(continuous= "blank"),diag = list(continuous = wrap("densityDiag",alpha=0.5)),legend=c(2,1),lower = list(continuous = wrap("points", alpha = 0.9, size=0.7))) + 
+  scale_color_manual(values=c("#DE8333","#1c9470")) +
+  scale_fill_manual(values=c("#DE8333","#1c9470")) +theme_bw() + labs(colour="Origin")
+ggsave("~/Library/CloudStorage/OneDrive-JohnsHopkins/Dr.GIlman/CHAVA_RNAseq/Deliverables/Manuscript/Figures/Origin.pdf")
+
+ggpairs(pca$x, columns = 1:5, aes(colour=CHAVA_ECG$Cat), upper =list(continuous= "blank"),diag = list(continuous = wrap("densityDiag",alpha=0.5)),legend=c(2,1),lower = list(continuous = wrap("points", alpha = 0.9, size=0.7))) + 
+  scale_color_manual(values=c("#0fbab7","#1b804f","#6e016b")) +
+  scale_fill_manual(values=c("#0fbab7","#1b804f","#6e016b")) +theme_bw() +  labs(colour="Heart Failure")
+ggsave("~/Library/CloudStorage/OneDrive-JohnsHopkins/Dr.GIlman/CHAVA_RNAseq/Deliverables/Manuscript/Figures/AHA_Category.pdf")
+
+ggpairs(pca$x, columns = 1:5, aes(colour=CHAVA_ECG$AgeCategory), upper =list(continuous = "blank"),diag = list(continuous = wrap("densityDiag",alpha=0.5)),legend=c(2,1),lower = list(continuous = wrap("points", alpha = 0.9, size=0.7))) + theme_bw() + labs(colour="AgeCategory")
+ggsave("~/Library/CloudStorage/OneDrive-JohnsHopkins/Dr.GIlman/CHAVA_RNAseq/Deliverables/Manuscript/Figures/AgeCategory.pdf")
+
+
+
+phenoCols=list(Infection=c(Neg="#4349e8",Pos="#f5474a"),Origin=c(CentralAm="#DE8333",Bolivia="#1c9470"),Cat=c(A="#0fbab7",B="#6e016b"))
+
+```
+
