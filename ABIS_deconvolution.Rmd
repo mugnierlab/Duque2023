@@ -1,0 +1,120 @@
+---
+title: "CHAVA_ABIS"
+author: "Carolina"
+date: "2023-04-06"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# ABsolute Immune Signal (ABIS) deconvolution
+I ran ABsolute Immune Signal (ABIS) deconvolution on their shiny app https://giannimonaco.shinyapps.io/ABIS/
+
+```{r}
+ABIS_absolute_wide=read.csv("~/Library/CloudStorage/OneDrive-JohnsHopkins/Dr.GIlman/CHAVA_RNAseq/CIBERSORT/ABsolute_deconvolution.csv")
+
+ABIS_absolute_wide$Infected=as.factor(ifelse(ABIS_absolute_wide$Infected==1,"Pos","Neg"))
+ABIS_absolute_wide$Sex=as.factor(ifelse(ABIS_absolute_wide$Sex==1,"F","M"))
+ABIS_absolute_wide=na.omit(ABIS_absolute_wide)
+
+
+ABIS_absolute_long = ABIS_absolute_wide %>%
+  pivot_longer(!c(Mixture,Category,Infected,Sex), names_to = "CellType", values_to = "Absolute")
+
+#Infection Females
+ABIS_F_wide= subset(ABIS_absolute_wide, Sex=="F")
+ABIS_F_long= subset(ABIS_absolute_long, Sex=="F")
+
+#compare seropositive vs seroneg
+ABIS_F_Ifxn_test = subset(ABIS_F_long, select=-c(Sex,Category))
+ABIS_F_Ifxn_test =  ABIS_F_Ifxn_test%>%
+  pivot_wider(
+    names_from = c(CellType, Infected),
+    values_from = c(Absolute))
+
+
+ABIStest_F_Ifxn_abs=data.frame()
+
+# stats
+for (cell in colnames(ABIS_F_wide)[5:21]) {
+  temp=wilcox.test(ABIS_F_Ifxn_test[[paste(cell,"Neg",sep="_")]], ABIS_F_Ifxn_test[[paste(cell,"Pos",sep="_")]],  alternative="two.sided", data=ABIS_F_Ifxn_test, exact=FALSE)
+  ABIStest_F_Ifxn_abs=rbind(ABIStest_F_Ifxn_abs,c(paste(cell),c("PosvNeg_F"),temp$p.value))
+}
+  
+colnames(ABIStest_F_Ifxn_abs)=c("CellType","Comparison", "Wilcox_P")
+
+ABIStest_F_Ifxn_abs = subset(ABIStest_F_Ifxn_abs,CellType == "B_mem"|CellType == "Plasmablasts"|CellType == "B_n")
+ABIStest_F_Ifxn_abs$FDR=p.adjust(ABIStest_F_Ifxn_abs$Wilcox_P, method = "BH", n = length(ABIStest_F_Ifxn_abs$Wilcox_P))
+ABIStest_F_Ifxn_abs[order(ABIStest_F_Ifxn_abs$Wilcox_P),]
+```
+
+```{r}
+Bcell=ggplot(subset(ABIS_F_long,CellType =="B_mem"|CellType =="B_n"|CellType =="Plasmablasts"), aes(fill=Infected,x=CellType, y=Absolute)) +
+  geom_boxplot(position="dodge", outlier.size = 1)+
+  scale_fill_manual(breaks = c("Neg","Pos"),
+                     values=c( "#7788e1", "#f38796")) +
+  theme_classic()
+Bcell
+#ggsave("Female_AvB_Bcell.pdf", width=4, heigh=3)
+```
+
+# B vs A
+pos and Neg
+```{r}
+#Infection
+ABIS_PosNeg_wide= subset(ABIS_absolute_wide, Category!="A2")
+ABIS_PosNeg_long= subset(ABIS_absolute_long, Category!="A2")
+
+#compare seropositive vs seroneg
+ABIS_PosNeg_Ifxn_test = subset(ABIS_PosNeg_long, select=-c(Sex,Infected,Category))
+ABIS_PosNeg_Ifxn_test =  ABIS_PosNeg_Ifxn_test%>%
+  pivot_wider(
+    names_from = c(CellType, InfectCat),
+    values_from = c(Absolute))
+
+
+ABIStest_PosNeg_Ifxn_abs=data.frame()
+
+# stats
+for (cell in colnames(ABIS_PosNeg_wide)[5:21]) {
+  temp=wilcox.test(ABIS_PosNeg_Ifxn_test[[paste(cell,"Pos_A",sep="_")]], ABIS_PosNeg_Ifxn_test[[paste(cell,"Pos_B",sep="_")]],  alternative="two.sided", data=ABIS_PosNeg_Ifxn_test, exact=FALSE)
+  ABIStest_PosNeg_Ifxn_abs=rbind(ABIStest_PosNeg_Ifxn_abs,c(paste(cell),c("AvB_pos"),temp$p.value))
+  
+  temp=wilcox.test(ABIS_PosNeg_Ifxn_test[[paste(cell,"Neg_A",sep="_")]], ABIS_PosNeg_Ifxn_test[[paste(cell,"Neg_B",sep="_")]],  alternative="two.sided", data=ABIS_PosNeg_Ifxn_test, exact=FALSE)
+  ABIStest_PosNeg_Ifxn_abs=rbind(ABIStest_PosNeg_Ifxn_abs,c(paste(cell),c("AvB_neg"),temp$p.value))
+  
+  temp=wilcox.test(ABIS_PosNeg_Ifxn_test[[paste(cell,"Neg_A",sep="_")]], ABIS_PosNeg_Ifxn_test[[paste(cell,"Pos_A",sep="_")]],  alternative="two.sided", data=ABIS_PosNeg_Ifxn_test, exact=FALSE)
+  ABIStest_PosNeg_Ifxn_abs=rbind(ABIStest_PosNeg_Ifxn_abs,c(paste(cell),c("-v+_A"),temp$p.value))
+  
+  temp=wilcox.test(ABIS_PosNeg_Ifxn_test[[paste(cell,"Neg_B",sep="_")]], ABIS_PosNeg_Ifxn_test[[paste(cell,"Pos_B",sep="_")]],  alternative="two.sided", data=ABIS_PosNeg_Ifxn_test, exact=FALSE)
+  ABIStest_PosNeg_Ifxn_abs=rbind(ABIStest_PosNeg_Ifxn_abs,c(paste(cell),c("-v+_B"),temp$p.value))
+}
+  
+colnames(ABIStest_PosNeg_Ifxn_abs)=c("CellType","Comparison", "Wilcox_P")
+ABIStest_PosNeg_Ifxn_abs$FDR=p.adjust(ABIStest_PosNeg_Ifxn_abs$Wilcox_P, method = "BH", n = length(ABIStest_PosNeg_Ifxn_abs$Wilcox_P))
+ABIStest_PosNeg_Ifxn_abs[order(ABIStest_PosNeg_Ifxn_abs$Wilcox_P),]
+```
+
+```{r}
+
+Tcell=ggplot(subset(ABIS_PosNeg_long,CellType =="T_CD8_n"|CellType =="T_CD4_n"|CellType =="T_CD4_Mem"|CellType =="T_CD8_mem"|CellType =="T_gd_Vd2"|CellType =="T_gd_non.Vd2"|CellType=="MAIT"), aes(fill=InfectCat,x=CellType, y=Absolute)) +
+  geom_boxplot(position="dodge",width=0.7, outlier.size = 1)+
+  scale_fill_manual(breaks = c("Pos_A","Pos_B","Neg_A","Neg_B"),
+                     values=c( "#0fbab7", "#6e016b","#a8f0ee","#e0abde")) +
+  theme_classic() +
+  theme(axis.text.x = element_text(angle = 45, hjust=1))
+
+ggsave(plot=Tcell, filename="posnegAvB_Tcell.pdf", width=6, heigh=3)
+
+APC=ggplot(subset(ABIS_PosNeg_long,CellType =="B_n"|CellType =="B_mem"|CellType =="Monocytes_C"|CellType =="Monocytes_NC.I"|CellType =="mDCs"), aes(fill=InfectCat,x=CellType, y=Absolute)) +
+  geom_boxplot(position="dodge", width=0.7, outlier.size = 1)+
+ scale_fill_manual(breaks = c("Pos_A","Pos_B","Neg_A","Neg_B"),
+                     values=c( "#0fbab7", "#6e016b","#a8f0ee","#e0abde")) +
+  theme_classic() +
+  theme(axis.text.x = element_text(angle = 45, hjust=1))
+  
+ggsave(plot=APC, filename="posneg_AvB_APC.pdf", width=5, heigh=3)
+
+```
