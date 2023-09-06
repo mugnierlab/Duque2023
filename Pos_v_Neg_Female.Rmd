@@ -1,0 +1,99 @@
+---
+title: "CHAVA_DGE_Analysis"
+author: "Carolina"
+date: "`r Sys.Date()`"
+output:   
+  html_document:
+    toc: true
+    toc_depth: 3
+    toc_float: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+```{r, global_options, include=FALSE}
+knitr::opts_chunk$set(message=FALSE, tidy.opts=list(width.cutoff=60), tidy=TRUE) 
+```
+#Set Up
+
+load required packages
+```{r, message=FALSE, results='hide'}
+library(DESeq2)
+library(readxl)
+library(dplyr)
+library(ggplot2)
+library(ggfortify)
+library(plotly)
+library(BiocManager)
+library(EnhancedVolcano)
+library("AnnotationDbi")
+library("org.Hs.eg.db")
+library(EnhancedVolcano)
+library(ggvenn)
+library(pheatmap)
+library(clusterProfiler)
+library(enrichplot)
+library("biomaRt")
+library("tibble")
+library(PoiClaClu)
+library(pheatmap)
+library(RColorBrewer)
+library(NOISeq)
+
+library(GGally)
+library(PCAtools)
+library("enrichR")
+```
+
+
+set up count and condition files
+
+```{r, echo=FALSE}
+CHAVAcondition=read_excel("~/Library/CloudStorage/OneDrive-JohnsHopkins/Dr.GIlman/CHAVA_RNAseq/CHAVA_R/CHAVAcondition.xlsx")
+CHAVAcounts=read.delim("~/Library/CloudStorage/OneDrive-JohnsHopkins/Dr.GIlman/CHAVA_RNAseq/CHAVA_R/CHAVAcounts.txt",row.names = 1)
+CHAVAcountsonly=CHAVAcounts[-c(1:5)]
+
+CHAVAinfo=CHAVAcondition
+CHAVAinfo$Infection=as.factor(ifelse(CHAVAinfo$Infection==1,"Pos","Neg"))
+CHAVAinfo$Sex=as.factor(ifelse(CHAVAinfo$Sex==1,"F","M"))
+ECGs=subset(CHAVAinfo,ECG!="NA")$NovogeneCode
+CHAVAinfo$ECG=as.factor(CHAVAinfo$ECG)
+CHAVAinfo$PCA=as.factor(CHAVAinfo$PCA)
+CHAVAinfo$OldECG=as.factor(CHAVAinfo$OldECG)
+CHAVAinfo$Cat=as.factor(CHAVAinfo$Cat)
+CHAVAinfo$Origin=as.factor(CHAVAinfo$Origin)
+CHAVAinfo$Batch=as.factor(CHAVAinfo$Batch)
+CHAVAinfo$RIN=as.factor(round(CHAVAinfo$RIN))
+#CHAVAinfo$AgeRange=cut(CHAVAinfo$Age,breaks=4) #break up age into factors  "(26.1,38.4]" "(38.4,50.7]" "(50.7,62.9]" "(62.9,75.2]"
+CHAVAinfo$AgeRange=cut(CHAVAinfo$Age,breaks=3) #(26.1,42.5], (42.5,58.8], (58.8,75.2]
+CHAVAinfo$AgeCategory=CHAVAinfo$AgeRange
+CHAVAinfo$AgeCategory=CHAVAinfo$AgeRange
+levels(CHAVAinfo$AgeCategory)=c("Young", "Mid","Old")
+
+#here i subset for patients that have values for the ECG, and I remove B140 since incorrect sex and idk what else might be wrong
+CHAVA_ECG=CHAVAinfo[CHAVAinfo$NovogeneCode %in% c(ECGs),]
+CHAVA_ECG=droplevels(CHAVA_ECG)
+CHAVA_ECG=subset(CHAVA_ECG,NovogeneCode!="B140")
+Counts_ECG=subset(CHAVAcountsonly, select=ECGs)
+Counts_ECG=subset(Counts_ECG, select=-B140)
+```
+
+focus on Female
+```{r}
+CHAVA_ECG=subset(CHAVA_ECG,Sex=="F")
+CHAVA_ECG=droplevels(CHAVA_ECG)
+Counts_ECG=subset(Counts_ECG, select=CHAVA_ECG$NovogeneCode)
+```
+
+
+remove rRNA counts
+```{r}
+ensembl=useMart("ENSEMBL_MART_ENSEMBL", host = "https://www.ensembl.org")
+ensembl = useDataset("hsapiens_gene_ensembl", mart=ensembl)
+rRNAs=biomaRt::getBM(values="rRNA", 
+               filters="biotype", 
+               attributes=c("ensembl_gene_id", "external_gene_name", "gene_biotype"), 
+               mart = ensembl)
+Counts_ECG=Counts_ECG[!(row.names(Counts_ECG) %in% rRNAs$ensembl_gene_id),]
+```
