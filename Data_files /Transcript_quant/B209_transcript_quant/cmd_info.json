@@ -1,0 +1,11 @@
+{
+    "salmon_version": "1.10.1",
+    "index": "/home/cduque1/scratch4-mmugnie1/carolina/Genomes/SalmonIndex/salmon_index",
+    "libType": "IU",
+    "mates1": "/home/cduque1/scratch4-mmugnie1/carolina/CHAVA/fastq/B209_1.fq.gz",
+    "mates2": "/home/cduque1/scratch4-mmugnie1/carolina/CHAVA/fastq/B209_2.fq.gz",
+    "threads": "8",
+    "gcBias": [],
+    "output": "B209_transcript_quant",
+    "auxDir": "aux_info"
+}
