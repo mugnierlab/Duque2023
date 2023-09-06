@@ -39,8 +39,6 @@ library("tibble")
 library(PoiClaClu)
 library(pheatmap)
 library(RColorBrewer)
-library(NOISeq)
-
 library(GGally)
 library(PCAtools)
 library("enrichR")
@@ -50,8 +48,8 @@ library("enrichR")
 set up count and condition files
 
 ```{r, echo=FALSE}
-CHAVAcondition=read_excel("~/Library/CloudStorage/OneDrive-JohnsHopkins/Dr.GIlman/CHAVA_RNAseq/CHAVA_R/CHAVAcondition.xlsx")
-CHAVAcounts=read.delim("~/Library/CloudStorage/OneDrive-JohnsHopkins/Dr.GIlman/CHAVA_RNAseq/CHAVA_R/CHAVAcounts.txt",row.names = 1)
+CHAVAcondition=read_excel("CHAVAcondition.xlsx")
+CHAVAcounts=read.delim("CHAVAcounts.txt",row.names = 1)
 CHAVAcountsonly=CHAVAcounts[-c(1:5)]
 
 CHAVAinfo=CHAVAcondition
@@ -70,12 +68,10 @@ CHAVAinfo$AgeCategory=CHAVAinfo$AgeRange
 levels(CHAVAinfo$AgeCategory)=c("Young", "Mid","Old")
 phenoCols=list(Infection=c(Neg="#4349e8",Pos="#f5474a"),Origin=c(CentralAm="#DE8333",Bolivia="#1c9470"),Cat=c(A="#0fbab7",B="#6e016b"))
 
-#here i subset for patients that have values for the ECG, and I remove B140 since incorrect sex and idk what else might be wrong
+#here i subset for patients that have values for the ECG
 CHAVA_ECG=CHAVAinfo[CHAVAinfo$NovogeneCode %in% c(ECGs),]
 CHAVA_ECG=droplevels(CHAVA_ECG)
-CHAVA_ECG=subset(CHAVA_ECG,NovogeneCode!="B140")
 Counts_ECG=subset(CHAVAcountsonly, select=ECGs)
-Counts_ECG=subset(Counts_ECG, select=-B140)
 ```
 
 focus on Female
@@ -98,7 +94,7 @@ Counts_ECG=Counts_ECG[!(row.names(Counts_ECG) %in% rRNAs$ensembl_gene_id),]
 ```
 # Comparing Infected and Uninfected Controls
 
-Set up deseq object and design matrix. fit model and evaluate DEGs. Here i have my cut off as FDR < 0.1 and any Log fold change.
+Set up deseq object and design matrix. fit model and evaluate DEGs.
 ```{r}
 ddsAll=DESeqDataSetFromMatrix(countData = Counts_ECG, colData =CHAVA_ECG, design= ~PCA  + Infection)
 keepddsAll= rowSums(counts(ddsAll)>= 10) >=3 #keeps genes with at least 3 samples with 10 counts
@@ -106,7 +102,7 @@ ddsAll <- ddsAll[keepddsAll,]
 
 ddsAll=DESeq(ddsAll) #normalizes, estimates dispersion and fits glm
 
-resultIfxnAll=results(ddsAll,alpha = 0.1, contrast=c("Infection", "Pos", "Neg")) #alpha sets FDR (default is 0.1), can also set lfcthreshold
+resultIfxnAll=results(ddsAll,alpha = 0.1, contrast=c("Infection", "Pos", "Neg")) #alpha sets FDR (default is 0.1)
 summary(resultIfxnAll)
 ```
 
@@ -126,9 +122,10 @@ annotIfxn<- as.data.frame(resultIfxnAll) %>%
 SigAnnot_Ifxn = subset(annotIfxn, FDR < 0.1)
 SigAnnot_Ifxn[order(SigAnnot_Ifxn$log2FC), ]
 
-#write.csv(SigAnnot_Ifxn,"~/Library/CloudStorage/OneDrive-JohnsHopkins/Dr.GIlman/CHAVA_RNAseq/Deliverables/Manuscript/tables/Female_PosvNeg.csv")
-
+write.csv(SigAnnot_Ifxn,"Female_PosvNeg.csv")
 ```
+
+### Heatmap
 
 ```{r}
 vstIfxn=vst(ddsAll, blind=FALSE)
@@ -145,7 +142,7 @@ sampleinfo_Ifxn= arrange(data.frame(colData(vstIfxn)[,c("ECG","Infection")]), In
 sampleinfo_Ifxn=subset(sampleinfo_Ifxn, select= -ECG)
 mat_Ifxn= assay(vstIfxn)[topgenes_Ifxn,] - rowMeans(assay(vstIfxn)[topgenes_Ifxn,])
 
-pdf("~/Library/CloudStorage/OneDrive-JohnsHopkins/Dr.GIlman/CHAVA_RNAseq/Deliverables/Manuscript/Figures/F_posneg_heatmap_0.1.pdf")
+pdf("F_posneg_heatmap_0.1.pdf")
 pheatmap(mat_Ifxn, annotation_col = sampleinfo_Ifxn, show_colnames = TRUE, labels_row = topgenesnames_Ifxn, annotation_colors= phenoCols,color = colorRampPalette(rev(brewer.pal(n = 7, name =
   "RdBu")))(100))
 dev.off()
@@ -198,22 +195,12 @@ EnhancedVolcano(annotIfxn,
                 max.overlaps = 25,
                 labSize = 5.0)
 
-ggsave("~/Library/CloudStorage/OneDrive-JohnsHopkins/Dr.GIlman/CHAVA_RNAseq/Deliverables/Manuscript/Figures/F_posneg_volcano.pdf", width=7, height=5.5)
+ggsave("F_posneg_volcano.pdf", width=7, height=5.5)
 ```
 
-*Gene Set Enrichment Analysis* 
-&nbsp;
-All genes can be used in GSEA; GSEA aggregates the per gene statistics across genes within a gene set, therefore making it possible to detect situations where all genes in a predefined set change in a small but coordinated way. This is important since it is likely that many relevant phenotypic differences are manifested by small but consistent changes in a set of genes. the goal of GSEA is to determine whether the members of S are randomly distributed throughout the ranked gene list (L) or primarily found at the top or bottom. When the entire gene sets are evaluated, the estimated significance level is adjusted to account for multiple hypothesis testing and also q-values are calculated for FDR control.
+## Gene Set Enrichment Analysis  
 
 ```{r}
-Ifxn_GO <- getBM(attributes=c('go_id','ensembl_gene_id'), 
-               filters = "ensembl_gene_id", 
-               values = rownames(resultIfxnAll), 
-               mart = ensembl)
-Ifxn_GO = subset(Ifxn_GO, go_id!="")
-Ifxn_GO = Ifxn_GO[,c(2,1)]
-
-
 Ifxn_geneList=annotIfxn$log2FC
 names(Ifxn_geneList) = as.character(annotIfxn$ensembl_gene_id)
 Ifxn_geneList = na.omit(Ifxn_geneList)
@@ -232,37 +219,14 @@ Ifxn_GSEA_BP <- gseGO(geneList= Ifxn_geneList,
               verbose      = TRUE)
 
 dotplot(Ifxn_GSEA_BP, showCategory=20, label_format=45, font=10, orderBy="qvalue",decreasing=FALSE)
-#ggsave("~/Library/CloudStorage/OneDrive-JohnsHopkins/Dr.GIlman/CHAVA_RNAseq/Deliverables/Manuscript/Figures/F_posneg_gsea_BP_dotplot.pdf", heigh=8)
+ggsave("F_posneg_gsea_BP_dotplot.pdf", heigh=8)
 
-
-Ifxn_GSEA_BP <- pairwise_termsim(Ifxn_GSEA_BP)
-Ifxn_GSEA_BP_simple <- simplify(Ifxn_GSEA_BP, cutoff=0.7, by="p.adjust", select_fun=min)
-dotplot(Ifxn_GSEA_BP_simple, showCategory=20, label_format=45, font=10, orderBy="qvalue",decreasing=FALSE)+ scale_colour_gradient(low = "#39c49b", high = "#41296b")
-
-edox2_Ifxn_GSEA_BP <- pairwise_termsim(Ifxn_GSEA_BP)
-treeplot(edox2_Ifxn_GSEA_BP,  showCategories=30, nCluster=7, label_format=10)
 
 Ifxn_GSEA_BP_Annot <- setReadable(Ifxn_GSEA_BP, 'org.Hs.eg.db', 'ENSEMBL')
-write.csv(Ifxn_GSEA_BP_Annot@result, file="~/Library/CloudStorage/OneDrive-JohnsHopkins/Dr.GIlman/CHAVA_RNAseq/Deliverables/Manuscript/tables/F_posneg_GSEA_BP.csv")
+write.csv(Ifxn_GSEA_BP_Annot@result, file="F_posneg_GSEA_BP.csv")
 
 cnetplot(Ifxn_GSEA_BP_Annot, foldChange=Ifxn_DEGeneList, cex_category=0.5,cex_label_gene=0.5,cex_label_category=0.5, node_label = "all", showCategory = 7)
-ggsave("~/Library/CloudStorage/OneDrive-JohnsHopkins/Dr.GIlman/CHAVA_RNAseq/Deliverables/Manuscript/Figures/F_posneg_gsea_cnet.pdf")
-
-Ifxn_GSEA_MF <- gseGO(geneList     = Ifxn_geneList,
-              OrgDb        = org.Hs.eg.db,
-              ont          = "MF",
-              keyType       = 'ENSEMBL',
-              minGSSize    = 10,
-              maxGSSize    = 5000,
-              pvalueCutoff = 0.05,
-              verbose      = TRUE)
-dotplot(Ifxn_GSEA_MF, showCategory=30, label_format=50, font=10, orderBy="qvalue",decreasing=FALSE)
-
-edox2_Ifxn_GSEA_MF <- pairwise_termsim(Ifxn_GSEA_MF)
-treeplot(edox2_Ifxn_GSEA_MF, showCategories=40, nCluster=3)
-
-Ifxn_GSEA_MF_Annot <- setReadable(Ifxn_GSEA_MF, 'org.Hs.eg.db', 'ENSEMBL')
-write.csv(Ifxn_GSEA_MF_Annot@result, file="~/Library/CloudStorage/OneDrive-JohnsHopkins/Dr.GIlman/CHAVA_RNAseq/Deliverables/Manuscript/tables/F_posneg_GSEA_MF.csv")
+ggsave("F_posneg_gsea_cnet.pdf")
 ```
 
 
@@ -324,3 +288,4 @@ p_imm_gu_DEGs=ggplot(F_imm_gu_DEGs_long, aes(fill=Infection,x=Names, y=WeightedC
 p_imm_gu_DEGs
 ggsave("imm_gu_DEGs_F.pdf",width=5,height=3)
 ```
+
