@@ -186,4 +186,293 @@ SigAnnot_AB_Pos[order(SigAnnot_AB_Pos$log2FC), ]
 
 #write.csv(SigAnnot_AB_Pos,"All_AB_Posv.csv")
 ```
+### Histogram
+```{r}
+vst_AB_Pos=vst(ddsAB_Pos, blind=FALSE)
+
+topgenes_AB_Pos=arrange(annot_AB_Pos, FDR)
+topgenes_AB_Pos=na.omit(topgenes_AB_Pos)
+topgenes_AB_Pos[topgenes_AB_Pos==""]="No GeneSymb"
+sigcount=sum(topgenes_AB_Pos$FDR < 0.1)
+if (sigcount <=2){sigcount=2}
+topgenesnames_AB_Pos <- topgenes_AB_Pos$external_gene_name[1:sigcount]
+topgenes_AB_Pos <- topgenes_AB_Pos$ensembl_gene_id[1:sigcount]
+
+sampleinfo_AB_Pos= arrange(data.frame(colData(vst_AB_Pos)[,c("Sex","Cat")]), Cat)
+sampleinfo_AB_Pos=subset(sampleinfo_AB_Pos, select= -Sex)
+mat_AB_Pos= assay(vst_AB_Pos)[topgenes_AB_Pos,] - rowMeans(assay(vst_AB_Pos)[topgenes_AB_Pos,])
+pdf(file="Pos_AvB_heatmpa_0.1.pdf")
+pheatmap(mat_AB_Pos, annotation_col = sampleinfo_AB_Pos, show_colnames = FALSE, labels_row = topgenesnames_AB_Pos, annotation_colors= phenoCols,color = colorRampPalette(rev(brewer.pal(n = 7, name =
+  "RdBu")))(100))
+dev.off()
+```
+
+
+### volcano plot
+```{r}
+y_AB_Pos=-log10(min(SigAnnot_AB_Pos$FDR))+1
+xmin_AB_Pos=min(SigAnnot_AB_Pos$log2FC)-1
+xmax_AB_Pos=max(SigAnnot_AB_Pos$log2FC)+1
+
+keyvals <- ifelse(
+    annot_AB_Pos$log2FC < -0.58 & annot_AB_Pos$FDR<0.1, 'royalblue',
+      ifelse(annot_AB_Pos$log2FC > 0.58 & annot_AB_Pos$FDR<0.1, 'red',
+            ifelse((annot_AB_Pos$log2FC< -0.58 | annot_AB_Pos$log2FC> 0.58 )& annot_AB_Pos$FDR>0.1,'black',
+                   ifelse(annot_AB_Pos$log2FC > -0.58 & annot_AB_Pos$log2FC < 0.58 & annot_AB_Pos$FDR<0.1,'black',
+        'grey'))))
+
+ 
+ 
+keyvals[is.na(keyvals)] <- 'grey'
+names(keyvals)[keyvals == 'red'] <- 'upregulated'
+names(keyvals)[keyvals == 'grey'] <- 'nonsignificant'
+names(keyvals)[keyvals == 'black'] <- 'mid'
+names(keyvals)[keyvals == 'royalblue'] <- 'downregulated'
+
+EnhancedVolcano(annot_AB_Pos,
+                lab = annot_AB_Pos$external_gene_name,
+                x = 'log2FC',
+                y = 'FDR',
+                colCustom = keyvals,
+                ylab = bquote(~-Log[10] ~ "FDR"),
+                ylim = c(0, y_AB_Pos),
+                xlim = c(xmin_AB_Pos,xmax_AB_Pos),
+                title = 'B pos vs A Pos',
+                subtitle = NULL,
+                legendPosition = "top",
+                boxedLabels = TRUE,
+                drawConnectors = TRUE,
+                legendLabSize = 10,
+                legendIconSize = 3,
+                axisLabSize = 10,
+                titleLabSize = 15,
+                shadeAlpha = 0.5,
+                colAlpha = 0.7,
+                pCutoff = 0.1,
+                FCcutoff = 0.58,
+                pointSize = 1.5,
+                labSize = 5.0)
+
+ggsave("Pos_AvB_Volcano.pdf", width=8)
+```
+
+
+## Negative
+```{r}
+CHAVA_ECG_AB_Neg=subset(CHAVA_ECG, Cat!="A2"&Infection=="Neg")
+CHAVA_ECG_AB_Neg=droplevels(CHAVA_ECG_AB_Neg)
+Counts_ECG_AB_Neg=subset(Counts_ECG, select=CHAVA_ECG_AB_Neg$NovogeneCode)
+```
+
+### DEG
+```{r}
+ddsAB_Neg=DESeqDataSetFromMatrix(countData = Counts_ECG_AB_Neg, colData =CHAVA_ECG_AB_Neg, design= ~PCA +Sex  + Cat)
+keepddsAB_Neg= rowSums(counts(ddsAB_Neg)>= 10) >=3 #keeps genes with at least 3 samples with 10 counts
+ddsAB_Neg <- ddsAB_Neg[keepddsAB_Neg,]
+ddsAB_Neg=DESeq(ddsAB_Neg) #normalizes, estimates dispersion and fits glm
+
+result_AB_Neg=results(ddsAB_Neg,alpha = 0.1,contrast=c("Cat", "B", "A")) 
+summary(result_AB_Neg)
+Sig_AB_Neg=subset(result_AB_Neg, padj < 0.1)
+
+```
+annotate results
+```{r}
+
+annot_AB_Neg <- getBM(attributes=c('ensembl_gene_id', 'external_gene_name'), 
+               filters = "ensembl_gene_id", 
+               values = rownames(result_AB_Neg), 
+               mart = ensembl)
+
+annot_AB_Neg<- as.data.frame(result_AB_Neg) %>% 
+  rownames_to_column("ensembl_gene_id") %>% 
+  left_join(annot_AB_Neg, "ensembl_gene_id") %>% 
+  rename(log2FC=log2FoldChange, FDR=padj)
+
+SigAnnot_AB_Neg = subset(annot_AB_Neg, FDR < 0.1)
+
+write.csv(SigAnnot_AB_Neg,"All_AB_Neg.csv")
+```
+### heatmap
+```{r}
+vst_AB_Neg=vst(ddsAB_Neg, blind=FALSE)
+
+topgenes_AB_Neg=subset(annot_AB_Neg, log2FC < -0.58 | log2FC >0.58)
+topgenes_AB_Neg=arrange(topgenes_AB_Neg, FDR)
+topgenes_AB_Neg=na.omit(topgenes_AB_Neg)
+topgenes_AB_Neg[topgenes_AB_Neg==""]="No GeneSymb"
+sigcount=sum(topgenes_AB_Neg$FDR < 0.1)
+if (sigcount <=2){sigcount=2}
+topgenesnames_AB_Neg <- topgenes_AB_Neg$external_gene_name[1:sigcount]
+topgenes_AB_Neg <- topgenes_AB_Neg$ensembl_gene_id[1:sigcount]
+
+sampleinfo_AB_Neg= arrange(data.frame(colData(vst_AB_Neg)[,c("Sex","Cat")]), Cat)
+sampleinfo_AB_Neg=subset(sampleinfo_AB_Neg, select= -Sex)
+mat_AB_Neg= assay(vst_AB_Neg)[topgenes_AB_Neg,] - rowMeans(assay(vst_AB_Neg)[topgenes_AB_Neg,])
+pdf(file="Neg_BvA_heatmap_0.1_log2FC_0.58.pdf")
+pheatmap(mat_AB_Neg, annotation_col = sampleinfo_AB_Neg, show_colnames = TRUE, labels_row = topgenesnames_AB_Neg, annotation_colors = phenoCols, color = colorRampPalette(rev(brewer.pal(n = 7, name =
+  "RdBu")))(100))
+dev.off()
+```
+
+
+### volcano plot
+```{r}
+y_AB_Neg=-log10(min(SigAnnot_AB_Neg$FDR))+1
+xmin_AB_Neg=min(SigAnnot_AB_Neg$log2FC)-1
+xmax_AB_Neg=max(SigAnnot_AB_Neg$log2FC)+1
+
+keyvalsNeg <- ifelse(
+    annot_AB_Neg$log2FC < -0.58 & annot_AB_Neg$FDR<0.1, 'royalblue',
+      ifelse(annot_AB_Neg$log2FC > 0.58 & annot_AB_Neg$FDR<0.1, 'red',
+            ifelse((annot_AB_Neg$log2FC< -0.58 | annot_AB_Neg$log2FC> 0.58 )& annot_AB_Neg$FDR>0.1,'black',
+                   ifelse(annot_AB_Neg$log2FC > -0.58 & annot_AB_Neg$log2FC < 0.58 & annot_AB_Neg$FDR<0.1,'black',
+        'grey'))))
+
+ 
+ 
+keyvalsNeg[is.na(keyvalsNeg)] <- 'grey'
+names(keyvalsNeg)[keyvalsNeg == 'red'] <- 'upregulated'
+names(keyvalsNeg)[keyvalsNeg == 'grey'] <- 'nonsignificant'
+names(keyvalsNeg)[keyvalsNeg == 'black'] <- 'mid'
+names(keyvalsNeg)[keyvalsNeg == 'royalblue'] <- 'downregulated'
+
+EnhancedVolcano(annot_AB_Neg,
+                lab = annot_AB_Neg$external_gene_name,
+                colCustom = keyvalsNeg,
+                drawConnectors = TRUE,
+                boxedLabels = TRUE,
+                x = 'log2FC',
+                y = 'FDR',
+                ylab = bquote(~-Log[10] ~ "FDR"),
+                ylim = c(0, y_AB_Neg),
+                xlim = c(xmin_AB_Neg,xmax_AB_Neg),
+                title = 'B Neg vs A Neg',
+                subtitle = NULL,
+                legendPosition = "top",
+                legendLabSize = 10,
+                legendIconSize = 3,
+                axisLabSize = 10,
+                titleLabSize = 15,
+                shadeAlpha = 0.5,
+                colAlpha = 0.7,
+                pCutoff = 0.1,
+                FCcutoff = 0.58,
+                pointSize = 1.5,
+                labSize = 5.0)
+ggsave("Neg_BvA_volcano.pdf",width=7, height=6)
+```
+
+## DEGs in positive but not negative
+
+```{r}
+All_Genes_AB_PosNeg=list(
+  `Pos_AvsB`=subset(SigAnnot_AB_Pos,log2FC < -0.58|log2FC > 0.58)$ensembl_gene_id,
+  `Neg_AvsB`=subset(SigAnnot_AB_Neg,log2FC < -0.58|log2FC > 0.58)$ensembl_gene_id)
+
+ggvenn(
+  All_Genes_AB_PosNeg,
+  fill_color = c("#f5474a", "#4349e8"),
+  stroke_size = 0.5, set_name_size = 4)
+
+ggsave("venn_AB_negpos.pdf")
+
+```
+
+FC of positive DEGs against the FC of those genes in the neg group
+```{r}
+FC_Table_AB= data.frame(
+  `ensembl_gene_id`=subset(SigAnnot_AB_Pos,log2FC < -0.58|log2FC > 0.58)$ensembl_gene_id,
+  `external_gene_name`=subset(SigAnnot_AB_Pos,log2FC < -0.58|log2FC > 0.58)$external_gene_name,
+  `PosLog2FC`=subset(SigAnnot_AB_Pos,log2FC < -0.58|log2FC > 0.58)$log2FC)
+
+test <- annot_AB_Neg %>%
+   dplyr::select(ensembl_gene_id,log2FC)
+
+FC_Table_AB <- left_join(FC_Table_AB, test, by = "ensembl_gene_id") %>% 
+   dplyr::select(ensembl_gene_id,external_gene_name,PosLog2FC,log2FC) %>%
+   rename(NegLog2FC=log2FC)
+
+
+ggplot(FC_Table_AB,aes(x=PosLog2FC, y=NegLog2FC))+ geom_point() + geom_vline(xintercept = 0) + 
+  geom_hline(yintercept = 0) + theme_minimal() + ylim(-1, 1) + ggplot2::geom_smooth(method=lm, se=FALSE)  +
+        stat_regline_equation() + stat_cor(method = "pearson", cor.coef.name = "R",label.x= -4, label.y=0.5) 
+
+#ggsave("plot_AB_negpos.pdf", heigh=4,width=5)
+
+```
+
+
+### Gene Ontology
+*Over Represented Analysis by GO*
+
+```{r}
+SigAnnot_AB_Pos <- SigAnnot_AB_Pos %>%
+  add_column(Infection = "Pos")
+
+SigAnnot_AB_Neg <- SigAnnot_AB_Neg %>%
+  add_column(Infection = "Neg")
+
+Compare_AB_NegPos = rbind (SigAnnot_AB_Pos,SigAnnot_AB_Neg)
+
+Compare_AB_NegPos = Compare_AB_NegPos %>%
+  mutate(Direction= case_when(log2FC < 0 ~ "Down",
+                          log2FC > 0 ~ "UP",
+                          )) 
+
+Universe_AB_NegPos = c(annot_AB_Neg$ensembl_gene_id,annot_AB_Pos$ensembl_gene_id)
+Universe_AB_NegPos = unique(Universe_AB_NegPos)
+
+Compare_AB_NegPos_BP <- compareCluster(ensembl_gene_id~Direction+Infection, 
+                                   data=Compare_AB_NegPos, 
+                                   fun="enrichGO",
+                                   OrgDb= org.Hs.eg.db,
+                keyType       = 'ENSEMBL',
+                universe = Universe_AB_NegPos,
+                ont           = "BP",
+                pAdjustMethod = "BH",
+                pvalueCutoff  = 0.05,
+                qvalueCutoff  = 0.05)
+
+dotplot(Compare_AB_NegPos_BP, x = 'Infection', showCategory=15,label_format=50, font=10) + facet_grid(~Direction)+ scale_colour_gradient(low = "#39c49b", high = "#41296b")
+ggsave("ORA_AB_PosNeg.pdf", height=10)
+Compare_AB_NegPos_BP_Annot <- setReadable(Compare_AB_NegPos_BP, 'org.Hs.eg.db', 'ENSEMBL')
+write.csv(Compare_AB_NegPos_BP_Annot@compareClusterResult,"ORA_AB_PosNeg.csv")
+```
+
+GSEA
+```{r}
+AB_Pos_geneList=annot_AB_Pos$log2FC
+names(AB_Pos_geneList) = as.character(annot_AB_Pos$ensembl_gene_id)
+AB_Pos_geneList = na.omit(AB_Pos_geneList)
+AB_Pos_geneList = sort(AB_Pos_geneList, decreasing = TRUE)
+
+AB_Neg_geneList=annot_AB_Neg$log2FC
+names(AB_Neg_geneList) = as.character(annot_AB_Neg$ensembl_gene_id)
+AB_Neg_geneList = na.omit(AB_Neg_geneList)
+AB_Neg_geneList = sort(AB_Neg_geneList, decreasing = TRUE)
+
+inputList <- list(Pos = AB_Pos_geneList , Neg = AB_Neg_geneList)
+
+Compare_AB_NegPos_BP_GSEA=compareCluster(geneClusters=inputList,  fun="gseGO",
+                     OrgDb        = org.Hs.eg.db,
+              ont          = "BP",
+              eps = 1e-30,
+              keyType       = 'ENSEMBL',
+              minGSSize    = 10,
+              maxGSSize    = 2000,
+              pvalueCutoff = 0.05,
+              pAdjustMethod="BH",
+              verbose      = TRUE)
+
+Compare_AB_NegPos_BP_GSEA_Annot <- setReadable(Compare_AB_NegPos_BP_GSEA, 'org.Hs.eg.db', 'ENSEMBL')
+write.csv(Compare_AB_NegPos_BP_GSEA_Annot@compareClusterResult,"GSEA_AB_PosNeg.csv")
+
+Compare_AB_NegPos_BP_GSEA <- pairwise_termsim(Compare_AB_NegPos_BP_GSEA)    
+
+net <- emapplot(Compare_AB_NegPos_BP_GSEA, showCategory = 200,cex_line = 0.2, max.overlaps=10,group_category = T, group_legend = T,node_label = "group",nCluster=16,cex_category=4, nWords=5)
+net
+
+ggsave(plot=net,filename = "GSEA_AB_PosNeg_net_cluster.pdf", height=8, width=13)
+```
 
