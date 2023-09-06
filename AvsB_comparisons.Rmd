@@ -39,7 +39,6 @@ library("tibble")
 library(PoiClaClu)
 library(pheatmap)
 library(RColorBrewer)
-library(NOISeq)
 
 library(GGally)
 library(PCAtools)
@@ -51,8 +50,8 @@ library(ggpubr)
 set up count and condition files
 
 ```{r, echo=FALSE}
-CHAVAcondition=read_excel("~/Library/CloudStorage/OneDrive-JohnsHopkins/Dr.GIlman/CHAVA_RNAseq/CHAVA_R/CHAVAcondition.xlsx")
-CHAVAcounts=read.delim("~/Library/CloudStorage/OneDrive-JohnsHopkins/Dr.GIlman/CHAVA_RNAseq/CHAVA_R/CHAVAcounts.txt",row.names = 1)
+CHAVAcondition=read_excel("CHAVAcondition.xlsx")
+CHAVAcounts=read.delim("CHAVAcounts.txt",row.names = 1)
 CHAVAcountsonly=CHAVAcounts[-c(1:5)]
 
 CHAVAinfo=CHAVAcondition
@@ -65,8 +64,7 @@ CHAVAinfo$Cat=as.factor(CHAVAinfo$Cat)
 CHAVAinfo$Origin=as.factor(CHAVAinfo$Origin)
 CHAVAinfo$Batch=as.factor(CHAVAinfo$Batch)
 CHAVAinfo$RIN=as.factor(round(CHAVAinfo$RIN))
-#CHAVAinfo$AgeRange=cut(CHAVAinfo$Age,breaks=4) #break up age into factors  "(26.1,38.4]" "(38.4,50.7]" "(50.7,62.9]" "(62.9,75.2]"
-CHAVAinfo$AgeRange=cut(CHAVAinfo$Age,breaks=3) #(26.1,42.5], (42.5,58.8], (58.8,75.2]
+CHAVAinfo$AgeRange=cut(CHAVAinfo$Age,breaks=3)
 CHAVAinfo$AgeCategory=CHAVAinfo$AgeRange
 levels(CHAVAinfo$AgeCategory)=c("Young", "Mid","Old","Oldest")
 
@@ -74,9 +72,7 @@ levels(CHAVAinfo$AgeCategory)=c("Young", "Mid","Old","Oldest")
 ECGs=subset(CHAVAinfo,ECG!="NA")$NovogeneCode
 CHAVA_ECG=CHAVAinfo[CHAVAinfo$NovogeneCode %in% c(ECGs),]
 CHAVA_ECG=droplevels(CHAVA_ECG)
-CHAVA_ECG=subset(CHAVA_ECG,NovogeneCode!="B140")
 Counts_ECG=subset(CHAVAcountsonly, select=ECGs)
-Counts_ECG=subset(Counts_ECG, select=-B140)
 ```
 
 remove rRNA counts
@@ -94,7 +90,7 @@ Counts_ECG=Counts_ECG[!(row.names(Counts_ECG) %in% rRNAs$ensembl_gene_id),]
 
 set up a dds object with all possible variable to explore and filter out low-count genes
 ```{r}
-dds_Var=DESeqDataSetFromMatrix(countData = Counts_ECG, colData =CHAVA_ECG, design= ~Sex +PCA + Origin + Cat+ AgeCategory + RIN +  Infection)
+dds_Var=DESeqDataSetFromMatrix(countData = Counts_ECG, colData =CHAVA_ECG, design= ~Sex + PCA + Origin + Cat+ AgeCategory +  Infection)
 
 keepddsVar= rowSums(counts(dds_Var)>= 10) >=3 #keeps genes with at least 3 samples with 10 counts
 dds_Var <- dds_Var[keepddsVar,]
@@ -103,8 +99,6 @@ dds_Var <- dds_Var[keepddsVar,]
 vst transform to meet assumptions for PCA analysis. 
 ```{r}
 vst_Var <- vst(dds_Var, blind=FALSE)
-testrld_Var=rbind(as.data.frame(assay(vst_Var)[, 1:2]))
-#ggplot(testrld_Var, aes(x=B052,y=B083))+ geom_hex(bins = 80) + coord_fixed()
 ```
 ```{r, message = FALSE}
 rv <- rowVars(assay(vst_Var))
@@ -113,32 +107,30 @@ pca <- prcomp(t(assay(vst_Var)[pcagenes,]))
 percentVar <- pca$sdev^2 / sum( pca$sdev^2 )
 
 autoplot(pca, data=CHAVA_ECG, colour="Sex", size=4) + theme_classic()
-ggsave("~SexPCA.pdf")
+ggsave("SexPCA.pdf")
 
 
 autoplot(pca, data=CHAVA_ECG, colour="PCA", size=4) + theme_classic() + scale_color_manual(values=c("purple","darkgrey"))
-ggsave("~BatchEffect.pdf")
-
-ggpairs(pca$x, columns = 1:5, aes(colour=CHAVA_ECG$Sex), upper =list(continuous= "blank"), diag = list(continuous = wrap("densityDiag",alpha=0.5)),lower = list(continuous = wrap("points", alpha = 0.9, size=0.6)))
+ggsave("BatchEffect.pdf")
 
 
 ggpairs(pca$x, columns = 1:5, aes(colour=CHAVA_ECG$Infection), upper =list(continuous= "blank"),diag = list(continuous = wrap("densityDiag",alpha=0.5)),legend=c(2,1),lower = list(continuous = wrap("points", alpha = 0.9, size=0.7))) + 
   scale_color_manual(values=c("#4349e8","#f5474a"))+ 
   scale_fill_manual(values=c("#4349e8","#f5474a"))+ theme_bw() + labs(colour="Infection Status")
-ggsave("~Infection.pdf")
+ggsave("Infection.pdf")
 
 ggpairs(pca$x, columns = 1:5, aes(colour=CHAVA_ECG$Origin), upper =list(continuous= "blank"),diag = list(continuous = wrap("densityDiag",alpha=0.5)),legend=c(2,1),lower = list(continuous = wrap("points", alpha = 0.9, size=0.7))) + 
   scale_color_manual(values=c("#DE8333","#1c9470")) +
   scale_fill_manual(values=c("#DE8333","#1c9470")) +theme_bw() + labs(colour="Origin")
-ggsave("~Origin.pdf")
+ggsave("Origin.pdf")
 
 ggpairs(pca$x, columns = 1:5, aes(colour=CHAVA_ECG$Cat), upper =list(continuous= "blank"),diag = list(continuous = wrap("densityDiag",alpha=0.5)),legend=c(2,1),lower = list(continuous = wrap("points", alpha = 0.9, size=0.7))) + 
   scale_color_manual(values=c("#0fbab7","#1b804f","#6e016b")) +
   scale_fill_manual(values=c("#0fbab7","#1b804f","#6e016b")) +theme_bw() +  labs(colour="Heart Failure")
-ggsave("~AHA_Category.pdf")
+ggsave("AHA_Category.pdf")
 
 ggpairs(pca$x, columns = 1:5, aes(colour=CHAVA_ECG$AgeCategory), upper =list(continuous = "blank"),diag = list(continuous = wrap("densityDiag",alpha=0.5)),legend=c(2,1),lower = list(continuous = wrap("points", alpha = 0.9, size=0.7))) + theme_bw() + labs(colour="AgeCategory")
-ggsave("~AgeCategory.pdf")
+ggsave("AgeCategory.pdf")
 
 
 phenoCols=list(Infection=c(Neg="#4349e8",Pos="#f5474a"),Origin=c(CentralAm="#DE8333",Bolivia="#1c9470"),Cat=c(A="#0fbab7",B="#6e016b"))
@@ -157,7 +149,7 @@ Counts_ECG_AB_Pos=subset(Counts_ECG, select=CHAVA_ECG_AB_Pos$NovogeneCode)
 ### DGE
 ```{r}
 
-ddsAB_Pos=DESeqDataSetFromMatrix(countData = Counts_ECG_AB_Pos, colData =CHAVA_ECG_AB_Pos, design= ~PCA + Sex +  Cat)
+ddsAB_Pos=DESeqDataSetFromMatrix(countData = Counts_ECG_AB_Pos, colData =CHAVA_ECG_AB_Pos, design= ~ PCA + Sex +  Cat)
 keepddsAB_Pos= rowSums(counts(ddsAB_Pos)>= 10) >=3 #keeps genes with at least 3 samples with 10 counts
 ddsAB_Pos <- ddsAB_Pos[keepddsAB_Pos,]
 ddsAB_Pos=DESeq(ddsAB_Pos) #normalizes, estimates dispersion and fits glm
