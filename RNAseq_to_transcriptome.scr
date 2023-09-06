@@ -1,3 +1,4 @@
+#!/bin/bash -l
 #SBATCH --job-name="Salmon"
 #SBATCH --time 4:10:0
 #SBATCH --partition=defq
