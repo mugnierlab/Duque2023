@@ -57,7 +57,7 @@ CHAVAinfo$Infection=as.factor(ifelse(CHAVAinfo$Infection==1,"Pos","Neg"))
 CHAVAinfo$Sex=as.factor(ifelse(CHAVAinfo$Sex==1,"F","M"))
 ECGs=subset(CHAVAinfo,ECG!="NA")$NovogeneCode
 CHAVAinfo$ECG=as.factor(CHAVAinfo$ECG)
-CHAVAinfo$PCA=as.factor(CHAVAinfo$PCA)
+CHAVAinfo$Batch=as.factor(CHAVAinfo$Batch)
 CHAVAinfo$OldECG=as.factor(CHAVAinfo$OldECG)
 CHAVAinfo$Cat=as.factor(CHAVAinfo$Cat)
 CHAVAinfo$Origin=as.factor(CHAVAinfo$Origin)
@@ -96,7 +96,7 @@ Counts_ECG=Counts_ECG[!(row.names(Counts_ECG) %in% rRNAs$ensembl_gene_id),]
 
 Set up deseq object and design matrix. fit model and evaluate DEGs.
 ```{r}
-ddsAll=DESeqDataSetFromMatrix(countData = Counts_ECG, colData =CHAVA_ECG, design= ~PCA  + Infection)
+ddsAll=DESeqDataSetFromMatrix(countData = Counts_ECG, colData =CHAVA_ECG, design= ~Batch  + Infection)
 keepddsAll= rowSums(counts(ddsAll)>= 10) >=3 #keeps genes with at least 3 samples with 10 counts
 ddsAll <- ddsAll[keepddsAll,]
 
@@ -138,13 +138,20 @@ if (sigcount <=2){sigcount=2}
 topgenesnames_Ifxn <- topgenes_Ifxn$external_gene_name[1:sigcount]
 topgenes_Ifxn <- topgenes_Ifxn$ensembl_gene_id[1:sigcount]
 
-sampleinfo_Ifxn= arrange(data.frame(colData(vstIfxn)[,c("ECG","Infection")]), Infection)
+sampleinfo_Ifxn= arrange(data.frame(colData(vstIfxn)[,c("Infection","ECG")]), Infection)
 sampleinfo_Ifxn=subset(sampleinfo_Ifxn, select= -ECG)
 mat_Ifxn= assay(vstIfxn)[topgenes_Ifxn,] - rowMeans(assay(vstIfxn)[topgenes_Ifxn,])
 
+mat_Ifxn = mat_Ifxn[, rownames(sampleinfo_Ifxn)]
+
 pdf("F_posneg_heatmap_0.1.pdf")
-pheatmap(mat_Ifxn, annotation_col = sampleinfo_Ifxn, show_colnames = TRUE, labels_row = topgenesnames_Ifxn, annotation_colors= phenoCols,color = colorRampPalette(rev(brewer.pal(n = 7, name =
-  "RdBu")))(100))
+pheatmap(mat_Ifxn, 
+         annotation_col = sampleinfo_Ifxn, 
+         show_colnames = FALSE, 
+         labels_row = topgenesnames_Ifxn, 
+         annotation_colors= phenoCols,
+         cluster_cols=FALSE,
+         color = colorRampPalette(rev(brewer.pal(n = 7, name ="RdBu")))(100))
 dev.off()
 ```
 
