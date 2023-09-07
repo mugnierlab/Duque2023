@@ -75,6 +75,19 @@ CHAVA_ECG=droplevels(CHAVA_ECG)
 Counts_ECG=subset(CHAVAcountsonly, select=ECGs)
 ```
 
+Make demographics table
+```{r}
+CHAVA_table=CreateTableOne(data=subset(CHAVA_ECG), strata="Infection", vars=c("Age","Sex","Origin","Cat"))
+
+print(CHAVA_table, exact = c("Origin","Sex","Cat"))
+Neg_CHAVA_table=CreateTableOne(data=subset(CHAVA_ECG,Infection=="Neg" & Cat != "A2"), strata="Cat", vars=c("Age","Sex","Origin"))
+print(Neg_CHAVA_table, exact = c("Origin","Sex"))
+
+
+Pos_CHAVA_table=CreateTableOne(data=subset(CHAVA_ECG,Infection=="Pos" & Cat != "A2"), strata="Cat", vars=c("Age","Sex","Origin"))
+print(Pos_CHAVA_table, exact = c("Origin","Sex"))
+```
+
 remove rRNA counts
 ```{r}
 ensembl=useMart("ENSEMBL_MART_ENSEMBL", host = "https://www.ensembl.org")
