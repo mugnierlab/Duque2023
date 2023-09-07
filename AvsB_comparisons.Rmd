@@ -497,3 +497,47 @@ net
 ggsave(plot=net,filename = "GSEA_AB_PosNeg_net_cluster.pdf", height=8, width=13)
 ```
 
+# get TPM counts for ABIS
+
+```{r, eval=FALSE}
+library("tximport")
+library("readr")
+library("tximportData")
+```
+
+```{r, eval=FALSE}
+tx2gene = biomaRt::getBM(attributes=c('ensembl_transcript_id', 
+  'ensembl_gene_id', 'external_gene_name', 'description'),mart=ensembl)
+```
+
+
+```{r, eval=FALSE}
+folderdf=data.frame("NovogeneCode"=CHAVAinfo$NovogeneCode)
+folderdf$folder= paste0(CHAVAinfo$NovogeneCode,"_transcript_quant")
+files <- file.path("Transcript_quant", folderdf$folder, "quant.sf")
+names(files) <- folderdf$NovogeneCode
+
+txi <- tximport(files, type="salmon", tx2gene=tx2gene, ignoreTxVersion=TRUE)
+```
+
+for cibersort
+```{r, eval=FALSE}
+All_abis=data.frame(txi$counts)
+
+Gene_All_abis <- getBM(attributes=c('ensembl_gene_id', 'external_gene_name'), 
+                            filters = "ensembl_gene_id", 
+                            values = rownames(All_Cybersort), 
+                            mart = ensembl)
+
+Gene_All_abis<- All_abis %>% 
+  rownames_to_column("ensembl_gene_id") %>% 
+  inner_join(Gene_All_abis, "ensembl_gene_id")
+
+Gene_All_abis=subset(Gene_All_abis,external_gene_name!="")
+Gene_All_abis=Gene_All_abis[!duplicated(Gene_All_abis$external_gene_name),]
+Gene_All_abis <- Gene_All_abis %>%
+  relocate(external_gene_name)
+Gene_All_abis$ensembl_gene_id <- NULL
+write.table(Gene_All_abis,"CHAVA_salmon_TPM.txt",sep="\t",row.names=FALSE)
+```
+
