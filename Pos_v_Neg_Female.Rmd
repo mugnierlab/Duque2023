@@ -66,7 +66,7 @@ CHAVAinfo$RIN=as.factor(round(CHAVAinfo$RIN))
 CHAVAinfo$AgeRange=cut(CHAVAinfo$Age,breaks=3)
 CHAVAinfo$AgeCategory=CHAVAinfo$AgeRange
 levels(CHAVAinfo$AgeCategory)=c("Young", "Mid","Old")
-phenoCols=list(Infection=c(Neg="#4349e8",Pos="#f5474a"),Origin=c(CentralAm="#DE8333",Bolivia="#1c9470"),Cat=c(A="#0fbab7",B="#6e016b"))
+phenoCols=list(Infection=c(Neg="#7788e1",Pos="#f38796"),Origin=c(CentralAm="#DE8333",Bolivia="#1c9470"),Cat=c(A="#0fbab7",B="#6e016b"))
 
 #here i subset for patients that have values for the ECG
 CHAVA_ECG=CHAVAinfo[CHAVAinfo$NovogeneCode %in% c(ECGs),]
