@@ -58,7 +58,7 @@ CHAVAinfo=CHAVAcondition
 CHAVAinfo$Infection=as.factor(ifelse(CHAVAinfo$Infection==1,"Pos","Neg"))
 CHAVAinfo$Sex=as.factor(ifelse(CHAVAinfo$Sex==1,"F","M"))
 CHAVAinfo$ECG=as.factor(CHAVAinfo$ECG)
-CHAVAinfo$PCA=as.factor(CHAVAinfo$PCA)
+CHAVAinfo$Batch=as.factor(CHAVAinfo$Batch)
 CHAVAinfo$OldECG=as.factor(CHAVAinfo$OldECG)
 CHAVAinfo$Cat=as.factor(CHAVAinfo$Cat)
 CHAVAinfo$Origin=as.factor(CHAVAinfo$Origin)
@@ -103,7 +103,7 @@ Counts_ECG=Counts_ECG[!(row.names(Counts_ECG) %in% rRNAs$ensembl_gene_id),]
 
 set up a dds object with all possible variable to explore and filter out low-count genes
 ```{r}
-dds_Var=DESeqDataSetFromMatrix(countData = Counts_ECG, colData =CHAVA_ECG, design= ~Sex + PCA + Origin + Cat+ AgeCategory +  Infection)
+dds_Var=DESeqDataSetFromMatrix(countData = Counts_ECG, colData =CHAVA_ECG, design= ~Sex + Batch + Origin + Cat+ AgeCategory +  Infection)
 
 keepddsVar= rowSums(counts(dds_Var)>= 10) >=3 #keeps genes with at least 3 samples with 10 counts
 dds_Var <- dds_Var[keepddsVar,]
@@ -123,7 +123,7 @@ autoplot(pca, data=CHAVA_ECG, colour="Sex", size=4) + theme_classic()
 ggsave("SexPCA.pdf")
 
 
-autoplot(pca, data=CHAVA_ECG, colour="PCA", size=4) + theme_classic() + scale_color_manual(values=c("purple","darkgrey"))
+autoplot(pca, data=CHAVA_ECG, colour="Batch", size=4) + theme_classic() + scale_color_manual(values=c("purple","darkgrey"))
 ggsave("BatchEffect.pdf")
 
 
@@ -162,7 +162,7 @@ Counts_ECG_AB_Pos=subset(Counts_ECG, select=CHAVA_ECG_AB_Pos$NovogeneCode)
 ### DGE
 ```{r}
 
-ddsAB_Pos=DESeqDataSetFromMatrix(countData = Counts_ECG_AB_Pos, colData =CHAVA_ECG_AB_Pos, design= ~ PCA + Sex +  Cat)
+ddsAB_Pos=DESeqDataSetFromMatrix(countData = Counts_ECG_AB_Pos, colData =CHAVA_ECG_AB_Pos, design= ~ Batch + Sex +  Cat)
 keepddsAB_Pos= rowSums(counts(ddsAB_Pos)>= 10) >=3 #keeps genes with at least 3 samples with 10 counts
 ddsAB_Pos <- ddsAB_Pos[keepddsAB_Pos,]
 ddsAB_Pos=DESeq(ddsAB_Pos) #normalizes, estimates dispersion and fits glm
@@ -206,9 +206,17 @@ topgenes_AB_Pos <- topgenes_AB_Pos$ensembl_gene_id[1:sigcount]
 sampleinfo_AB_Pos= arrange(data.frame(colData(vst_AB_Pos)[,c("Sex","Cat")]), Cat)
 sampleinfo_AB_Pos=subset(sampleinfo_AB_Pos, select= -Sex)
 mat_AB_Pos= assay(vst_AB_Pos)[topgenes_AB_Pos,] - rowMeans(assay(vst_AB_Pos)[topgenes_AB_Pos,])
+
+mat_AB_Pos = mat_AB_Pos[, rownames(sampleinfo_AB_Pos)]
+
 pdf(file="Pos_AvB_heatmpa_0.1.pdf")
-pheatmap(mat_AB_Pos, annotation_col = sampleinfo_AB_Pos, show_colnames = FALSE, labels_row = topgenesnames_AB_Pos, annotation_colors= phenoCols,color = colorRampPalette(rev(brewer.pal(n = 7, name =
-  "RdBu")))(100))
+pheatmap(mat_AB_Pos, 
+         annotation_col = sampleinfo_AB_Pos, 
+         show_colnames = FALSE, 
+         labels_row = topgenesnames_AB_Pos, 
+         annotation_colors= phenoCols,
+         cluster_cols=FALSE,
+         color = colorRampPalette(rev(brewer.pal(n = 7, name ="RdBu")))(100))
 dev.off()
 ```
 
@@ -271,7 +279,7 @@ Counts_ECG_AB_Neg=subset(Counts_ECG, select=CHAVA_ECG_AB_Neg$NovogeneCode)
 
 ### DEG
 ```{r}
-ddsAB_Neg=DESeqDataSetFromMatrix(countData = Counts_ECG_AB_Neg, colData =CHAVA_ECG_AB_Neg, design= ~PCA +Sex  + Cat)
+ddsAB_Neg=DESeqDataSetFromMatrix(countData = Counts_ECG_AB_Neg, colData =CHAVA_ECG_AB_Neg, design= ~Batch +Sex  + Cat)
 keepddsAB_Neg= rowSums(counts(ddsAB_Neg)>= 10) >=3 #keeps genes with at least 3 samples with 10 counts
 ddsAB_Neg <- ddsAB_Neg[keepddsAB_Neg,]
 ddsAB_Neg=DESeq(ddsAB_Neg) #normalizes, estimates dispersion and fits glm
@@ -302,8 +310,7 @@ write.csv(SigAnnot_AB_Neg,"All_AB_Neg.csv")
 ```{r}
 vst_AB_Neg=vst(ddsAB_Neg, blind=FALSE)
 
-topgenes_AB_Neg=subset(annot_AB_Neg, log2FC < -0.58 | log2FC >0.58)
-topgenes_AB_Neg=arrange(topgenes_AB_Neg, FDR)
+topgenes_AB_Neg=arrange(annot_AB_Neg, FDR)
 topgenes_AB_Neg=na.omit(topgenes_AB_Neg)
 topgenes_AB_Neg[topgenes_AB_Neg==""]="No GeneSymb"
 sigcount=sum(topgenes_AB_Neg$FDR < 0.1)
@@ -314,9 +321,18 @@ topgenes_AB_Neg <- topgenes_AB_Neg$ensembl_gene_id[1:sigcount]
 sampleinfo_AB_Neg= arrange(data.frame(colData(vst_AB_Neg)[,c("Sex","Cat")]), Cat)
 sampleinfo_AB_Neg=subset(sampleinfo_AB_Neg, select= -Sex)
 mat_AB_Neg= assay(vst_AB_Neg)[topgenes_AB_Neg,] - rowMeans(assay(vst_AB_Neg)[topgenes_AB_Neg,])
-pdf(file="Neg_BvA_heatmap_0.1_log2FC_0.58.pdf")
-pheatmap(mat_AB_Neg, annotation_col = sampleinfo_AB_Neg, show_colnames = TRUE, labels_row = topgenesnames_AB_Neg, annotation_colors = phenoCols, color = colorRampPalette(rev(brewer.pal(n = 7, name =
-  "RdBu")))(100))
+
+mat_AB_Neg = mat_AB_Neg[, rownames(sampleinfo_AB_Neg)]
+
+pdf(file="Neg_BvA_heatmap_0.1_ordered.pdf")
+pheatmap(mat_AB_Neg, 
+         annotation_col = sampleinfo_AB_Neg, 
+         show_colnames = FALSE, 
+         labels_row = topgenesnames_AB_Neg, 
+         annotation_colors = phenoCols, 
+         cluster_cols=FALSE,
+         fontsize = 8,
+         color = colorRampPalette(rev(brewer.pal(n = 7, name ="RdBu")))(100))
 dev.off()
 ```
 
