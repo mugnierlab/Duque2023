@@ -287,5 +287,8 @@ p_imm_gu_DEGs=ggplot(F_imm_gu_DEGs_long, aes(fill=Infection,x=Names, y=WeightedC
 
 p_imm_gu_DEGs
 ggsave("imm_gu_DEGs_F.pdf",width=5,height=3)
+
+compare_means(WeightedCounts ~ Infection, data = F_imm_gu_DEGs_long, 
+              group.by = "Names")
 ```
 
