@@ -12,6 +12,18 @@ knitr::opts_chunk$set(echo = TRUE)
 # ABsolute Immune Signal (ABIS) deconvolution
 I ran ABsolute Immune Signal (ABIS) deconvolution on their shiny app https://giannimonaco.shinyapps.io/ABIS/
 
+```{r}
+ABIS_absolute_wide=read.csv("~/ABsolute_deconvolution.csv")
+
+ABIS_absolute_wide$Infected=as.factor(ifelse(ABIS_absolute_wide$Infected==1,"Pos","Neg"))
+ABIS_absolute_wide$Sex=as.factor(ifelse(ABIS_absolute_wide$Sex==1,"F","M"))
+ABIS_absolute_wide=na.omit(ABIS_absolute_wide)
+
+
+ABIS_absolute_long = ABIS_absolute_wide %>%
+  pivot_longer(!c(Mixture,Category,Infected,Sex), names_to = "CellType", values_to = "Absolute")
+```
+
 ## B vs A
 pos and Neg
 ```{r}
@@ -63,7 +75,7 @@ ggplot(subset(ABIS_Pos_long,CellType =="T_CD8_n"|CellType =="T_CD4_n"|CellType =
 I ran cybersortx on https://cibersortx.stanford.edu/. I used the LM22 microarray signature matrix. Since my data is from bulk RNAseq, I perform batch correction in B mode using LM22 source GEP file to account for the difference in microarray and RNAseqd data. I run 1000 permutations
 
 ```{r}
-cyber_absolute_wide=read.csv("~/Library/CloudStorage/OneDrive-JohnsHopkins/Dr.GIlman/CHAVA_RNAseq/CIBERSORT/CHAVA_CIBERSORT_absolute.csv")
+cyber_absolute_wide=read.csv("~/CHAVA_CIBERSORT_absolute.csv")
 cyber_absolute_wide$Infected=as.factor(ifelse(cyber_absolute_wide$Infected==1,"Pos","Neg"))
 cyber_absolute_wide$Sex=as.factor(ifelse(cyber_absolute_wide$Sex==1,"F","M"))
 cyber_absolute_wide=na.omit(cyber_absolute_wide)
@@ -109,7 +121,7 @@ ggsave("AB_CIBERSORT.pdf", width=9.5, heigh=6.2)
 
 ```{r}
 library("immunedeconv")   
-TPMcounts=read.delim("~/Library/CloudStorage/OneDrive-JohnsHopkins/Dr.GIlman/CHAVA_RNAseq/CIBERSORT/CHAVA_Cybersort_TPM.txt",row.names = 1)
+TPMcounts=read.delim("~/CHAVA_Cybersort_TPM.txt",row.names = 1)
 
 #EPIC=immunedeconv::deconvolute(TPMcounts, "epic") #this one is missing a lot of immune cells
 xcell=immunedeconv::deconvolute(TPMcounts, "xcell")
