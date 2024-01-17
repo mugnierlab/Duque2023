@@ -522,7 +522,7 @@ txi <- tximport(files, type="salmon", tx2gene=tx2gene, ignoreTxVersion=TRUE)
 
 for cibersort
 ```{r, eval=FALSE}
-All_abis=data.frame(txi$counts)
+All_abis=data.frame(txi$abundance)
 
 Gene_All_abis <- getBM(attributes=c('ensembl_gene_id', 'external_gene_name'), 
                             filters = "ensembl_gene_id", 
